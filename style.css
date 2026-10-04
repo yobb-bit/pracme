@@ -1,0 +1,1013 @@
+/* ==========================================================================
+   Interview Practice — stylesheet
+   --------------------------------------------------------------------------
+   Structure of this file:
+     1. CSS variables (colours) + dark mode
+     2. Base / typography
+     3. Layout shell
+     4. Header, tabs + timer
+     5. Filter buttons
+     6. Question card
+     7. Reveal blocks + rating chips
+     8. Session summary
+9. Review screen
+     10. Small tweaks for very small screens
+     11. Boss Battle 3D arena
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. COLOURS
+   --------------------------------------------------------------------------
+   CSS variables (the --name parts) act like labels for colours. We define
+   them once here, then just use var(--surface) everywhere else. That is what
+   lets dark mode be a small block at the bottom instead of a rewrite.
+   ========================================================================== */
+:root {
+  color-scheme: light;                 /* tells the browser we handle both themes */
+
+  --bg:        #f2f4f8;                /* page background */
+  --surface:   #ffffff;                /* cards and buttons */
+  --surface-2: #eef1f6;                /* subtle fills (chips, inputs) */
+  --text:      #14181f;                /* main text */
+  --text-dim:  #5b6472;                /* secondary text */
+  --border:    #d9dee7;                /* hairlines */
+  --accent:    #2f6feb;                /* primary blue */
+  --accent-text: #ffffff;              /* text on the accent colour */
+  --good:      #1f9d55;                /* "Nailed it" */
+  --ok:        #c98a00;                /* "Partly" */
+  --bad:       #d94040;                /* "Missed it" */
+
+  --radius:    12px;                   /* rounded corners */
+  --shadow:    0 1px 2px rgba(16, 24, 40, .06), 0 8px 24px rgba(16, 24, 40, .06);
+}
+
+
+/* ==========================================================================
+   DARK MODE — automatically follows the operating system / browser setting.
+   No JavaScript and no toggle needed. In macOS/iOS/Android the switch is in
+   System Settings > Appearance. To force it while testing, add this to the
+   <head> of index.html:
+
+     <meta name="color-scheme" content="dark">
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg:        #0e1116;
+    --surface:   #171b22;
+    --surface-2: #21262f;
+    --text:      #e7ecf3;
+    --text-dim:  #97a1b0;
+    --border:    #2c323c;
+    --accent:    #5b8dff;
+    --accent-text: #0b0e13;
+    --good:      #3ecf72;
+    --ok:        #e0a83a;
+    --bad:       #ff6b6b;
+
+    --shadow:    0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+  }
+}
+
+
+/* ==========================================================================
+   2. BASE / TYPOGRAPHY
+   ========================================================================== */
+* { box-sizing: border-box; }          /* padding is included in width */
+
+/* Anything the JS hides with el.hidden = true has to really disappear.
+   The browser's built-in [hidden] { display: none } lives in the default
+   stylesheet, so ANY rule of ours that sets display beats it -- the element
+   stays on screen while the code believes it is gone. That silently broke
+   the victory panel, the difficulty row and the loading overlay, so it is
+   worth forcing once, here, instead of remembering it on every new element. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  /* A system font stack = no downloads, so the app stays fast and works offline */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.55;
+  /* Fade-in on first paint so the app never flashes an unstyled frame */
+  animation: fade-in .3s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+h1, h2, h3 { line-height: 1.25; margin: 0; }
+p { margin: 0 0 .6rem; }
+ul { margin: 0; }
+
+/* Respect the OS "reduce motion" accessibility setting */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+
+/* ==========================================================================
+   3. LAYOUT SHELL
+   --------------------------------------------------------------------------
+   Mobile-first: this is the base (phone) layout. The extra column widths
+   come later, in the max-width media queries at the bottom of this file.
+   ========================================================================== */
+.app {
+  width: 100%;
+  max-width: 720px;                   /* never stretch wider than this */
+  margin: 0 auto;
+  padding: 1rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.error {
+  margin: 0;
+  padding: .85rem 1rem;
+  border: 1px solid var(--bad);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--bad);
+  font-size: .9rem;
+}
+.error code {
+  background: var(--surface-2);
+  padding: .1rem .35rem;
+  border-radius: 5px;
+}
+
+
+/* ==========================================================================
+   4. HEADER, TABS + TIMER
+   ========================================================================== */
+.app__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.app__header h1 {
+  font-size: 1.3rem;
+  letter-spacing: -.02em;
+}
+
+/* --- Tabs (Practice / Review) --- */
+.tabs {
+  display: flex;
+  gap: .35rem;
+  margin-top: .5rem;
+}
+
+.tabs__btn {
+  padding: .35rem .7rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabs__btn:hover { color: var(--text); }
+
+/* The open tab gets a visible outline */
+.tabs__btn.is-active {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Count of questions waiting for review */
+.tabs__count {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 .35em;
+  border-radius: 999px;
+  background: var(--bad);
+  color: #fff;
+  font-size: .75rem;
+  text-align: center;
+}
+
+/* Nothing to review yet, so the badge is grey instead of red */
+.tabs__count.is-empty { background: var(--text-dim); }
+
+.timer {
+  /* Monospace + tabular numbers stop the timer from jittering as digits change */
+  margin: 0;
+  padding: .3rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.05rem;
+  color: var(--text-dim);
+}
+
+/* The timer turns green once you are answering and red past a minute */
+.timer.is-running { color: var(--accent); border-color: var(--accent); }
+.timer.is-slow    { color: var(--bad);   border-color: var(--bad); }
+
+
+/* ==========================================================================
+   5. FILTER BUTTONS (difficulty + category)
+   --------------------------------------------------------------------------
+   Both filter rows use .filters and .filters__btn, so adding another filter
+   later is just another <nav class="filters"> in the HTML.
+   ========================================================================== */
+.filters {
+  display: flex;
+  flex-wrap: wrap;                     /* wrap onto new lines instead of overflowing */
+  gap: .5rem;
+}
+
+.filters__btn {
+  padding: .45rem .9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.filters__btn:hover { border-color: var(--accent); color: var(--text); }
+
+/* The active filter is the only button filled in */
+.filters__btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+/* Difficulty buttons carry a hint of how hard they are */
+.filters__btn[data-level="easy"]:not(.is-active)   { color: var(--good); }
+.filters__btn[data-level="neutral"]:not(.is-active) { color: var(--ok); }
+.filters__btn[data-level="hard"]:not(.is-active)   { color: var(--bad); }
+
+
+/* Progress line ("3 left in this round · Networking · Hard") */
+.progress {
+  margin: 0;
+  font-size: .8rem;
+  color: var(--text-dim);
+}
+
+
+/* ==========================================================================
+   6. QUESTION CARD
+   ========================================================================== */
+.card,
+.summary,
+.review__item {
+  padding: 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: .2rem .6rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* Difficulty badge is tinted to match the level (level set in app.js) */
+.badge--difficulty[data-level="easy"]   { color: var(--good); }
+.badge--difficulty[data-level="neutral"] { color: var(--ok); }
+.badge--difficulty[data-level="hard"]   { color: var(--bad); }
+
+/* Type badge: knowledge is neutral, the other two get a colour */
+.badge--type[data-type="knowledge"]   { color: var(--text-dim); }
+.badge--type[data-type="situational"] { color: var(--accent); }
+.badge--type[data-type="logical"]     { color: var(--good); }
+
+.question {
+  margin: .6rem 0 1.1rem;
+  font-size: 1.2rem;
+}
+
+/* Code snippet that belongs to the question. Long lines scroll sideways
+   instead of stretching the card on a phone. */
+.code {
+  margin: 0 0 1.1rem;
+  padding: .8rem .9rem;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--surface-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .85rem;
+  line-height: 1.5;
+  /* keeps the indentation inside the question's code string */
+  white-space: pre;
+  -webkit-overflow-scrolling: touch;
+}
+
+.answer-label {
+  display: block;
+  margin-bottom: .35rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.answer {
+  display: block;
+  width: 100%;
+  padding: .75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  /* 16px avoids iOS Safari zooming in when a field is focused */
+  font-size: 16px;
+  resize: vertical;
+}
+
+.answer:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+/* After checking, the answer is read-only (but stays visible for reference) */
+.answer:disabled {
+  opacity: .75;
+  cursor: default;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .85rem;
+}
+
+.btn {
+  /* border: 0 plus a shadow keeps the tap target a predictable height */
+  padding: .7rem 1.1rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .08s, filter .15s;
+}
+
+/* Finger-friendly minimum tap size (Apple/Google recommend ~44px) */
+.btn { min-height: 44px; }
+
+.btn:active { transform: translateY(1px); }
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn--primary { background: var(--accent); color: var(--accent-text); flex: 1 1 100%; }
+.btn--ghost   { background: transparent; color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--border); }
+.btn--small   { padding: .5rem .8rem; font-size: .85rem; min-height: 40px; }
+
+.btn:hover { filter: brightness(1.06); }
+
+/* Small note shown after "I don't know" */
+.note {
+  margin: 1rem 0 0;
+  padding-top: .9rem;
+  border-top: 1px dashed var(--border);
+  font-size: .9rem;
+  color: var(--text-dim);
+}
+
+
+/* ==========================================================================
+   7. REVEAL BLOCKS + RATING CHIPS
+   --------------------------------------------------------------------------
+   The four blocks sit in the order they should be revealed:
+   analogy, model answer, real-life example, key points.
+   Each has a coloured left edge so you can spot the section at a glance.
+   ========================================================================== */
+.reveal {
+  margin-top: 1.15rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border);
+  animation: fade-in .25s ease;
+}
+
+.reveal__block {
+  margin-bottom: .85rem;
+  padding: .6rem .75rem;
+  border-left: 3px solid var(--border);
+  border-radius: 0 8px 8px 0;
+  background: var(--surface-2);
+}
+
+.reveal__block h3 {
+  margin-bottom: .3rem;
+  font-size: .78rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.reveal__block p,
+.reveal__block ul,
+.reveal__block ol { font-size: .95rem; }
+
+/* Bulleted lists and the numbered approach list indent the same way */
+.reveal__block ul,
+.reveal__block ol { padding-left: 1.25rem; }
+.reveal__block li { margin-bottom: .3rem; }
+
+/* Coloured left edges, so you can spot the section you are reading */
+.reveal__block--analogy    { border-left-color: var(--accent); }
+.reveal__block--clarifying { border-left-color: var(--accent); }
+.reveal__block--approach   { border-left-color: var(--good); }
+.reveal__block--mistakes   { border-left-color: var(--bad); }
+.reveal__block--model      { border-left-color: var(--good); }
+.reveal__block--answer     { border-left-color: var(--good); }
+.reveal__block--example    { border-left-color: var(--ok); }
+.reveal__block--followup   { border-left-color: var(--text-dim); }
+.reveal__block--keypoints  { border-left-color: var(--accent); }
+
+.rating {
+  margin-top: 1rem;
+  padding-top: .9rem;
+  border-top: 1px dashed var(--border);
+}
+
+.rating__question {
+  margin: 0 0 .55rem;
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+/* 3 equal buttons that stay legible even on a narrow phone */
+.rating__buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .45rem;
+}
+
+.chip {
+  padding: .65rem .3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip--good:hover { border-color: var(--good); color: var(--good); }
+.chip--ok:hover   { border-color: var(--ok);   color: var(--ok); }
+.chip--bad:hover  { border-color: var(--bad);  color: var(--bad); }
+
+/* The rating you picked is filled in and stays that way */
+.chip.is-selected[data-rating="nailed"] { background: var(--good); border-color: var(--good); color: #fff; }
+.chip.is-selected[data-rating="partly"] { background: var(--ok);   border-color: var(--ok);   color: #1a1400; }
+.chip.is-selected[data-rating="missed"] { background: var(--bad);  border-color: var(--bad);  color: #fff; }
+
+
+/* ==========================================================================
+   8. SESSION SUMMARY
+   ========================================================================== */
+.summary__title {
+  font-size: .95rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.summary__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin: .6rem 0 .9rem;
+}
+
+.stat {
+  flex: 1 1 90px;
+  padding: .6rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: .85rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.stat strong { display: block; font-size: 1.3rem; color: var(--text); }
+.stat--good strong { color: var(--good); }
+.stat--ok strong   { color: var(--ok); }
+.stat--bad strong  { color: var(--bad); }
+
+
+/* ==========================================================================
+   9. REVIEW SCREEN
+   ========================================================================== */
+.screen__title {
+  font-size: 1.1rem;
+  letter-spacing: -.01em;
+}
+
+.screen__hint {
+  margin: 0 0 1rem;
+  font-size: .85rem;
+  color: var(--text-dim);
+}
+
+/* The list itself has no card styling; each <li> is its own card */
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.review__q {
+  margin: .5rem 0 .4rem;
+  font-weight: 600;
+}
+
+/* Seen / missed / last result, in one line */
+.review__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem .7rem;
+  margin-bottom: .6rem;
+  font-size: .78rem;
+  color: var(--text-dim);
+}
+
+.review__last { font-weight: 700; }
+.review__last--nailed { color: var(--good); }
+.review__last--partly { color: var(--ok); }
+.review__last--missed { color: var(--bad); }
+
+/* Analogy and model answer inside a review item */
+.review__section {
+  margin-top: .5rem;
+  padding: .5rem .65rem;
+  border-left: 3px solid var(--border);
+  border-radius: 0 8px 8px 0;
+  background: var(--surface-2);
+  font-size: .9rem;
+}
+
+.review__section h4 {
+  margin: 0 0 .2rem;
+  font-size: .72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.review__section p { margin: 0; }
+.review__section--analogy { border-left-color: var(--accent); }
+.review__section--model   { border-left-color: var(--good); }
+
+
+/* ==========================================================================
+   10. SMALLER PHONES
+   --------------------------------------------------------------------------
+   Keep this block last so it wins over the rules above when sizes are equal.
+   ========================================================================== */
+@media (max-width: 380px) {
+  .app { padding: .75rem .75rem 2rem; }
+  .question { font-size: 1.08rem; }
+  .chip { font-size: .78rem; }
+  .rating__buttons { gap: .35rem; }
+}
+
+/* ==========================================================================
+   11. BOSS BATTLE 3D ARENA
+   --------------------------------------------------------------------------
+   The panel at the top of the page. Everything uses the same CSS variables as
+   the rest of the app, so light mode and dark mode both come for free.
+   ========================================================================== */
+.arena {
+  margin-bottom: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;                 /* keeps the canvas inside the rounded corners */
+}
+
+/* The box the canvas lives in. aspect-ratio sets the height from the width,
+   so the panel keeps its shape on any screen without a fixed height. */
+.arena__stage {
+  position: relative;               /* so the loading text can sit on top */
+  aspect-ratio: 16 / 9;
+  background: var(--surface-2);     /* shown before the 3D paints its own bg */
+}
+
+.arena__canvas {
+  display: block;                   /* removes the small gap under a canvas */
+  width: 100%;
+  height: 100%;
+}
+
+/* "Loading fighters…" — a small pill in the middle of the stage */
+.arena__loading {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: grid;
+  place-content: center;
+  padding: 1rem;
+  text-align: center;
+  font-size: .9rem;
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  pointer-events: none;             /* clicks pass through to the canvas */
+}
+
+/* Shown instead of the canvas when WebGL is missing */
+.arena__fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: 1rem;
+  background: var(--surface-2);
+}
+
+.arena__emoji { font-size: 2.2rem; line-height: 1; }
+
+.arena__fallback-note {
+  flex-basis: 100%;
+  margin: .4rem 0 0;
+  text-align: center;
+  font-size: .85rem;
+  color: var(--text-dim);
+}
+
+/* Names under the stage: Batman on the left, villain on the right */
+.arena__names {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  margin: 0;
+  padding: .5rem .75rem;
+  border-top: 1px solid var(--border);
+  font-size: .95rem;
+  font-weight: 600;
+}
+
+.arena__name--player  { color: var(--accent); }
+.arena__name--villain { color: var(--bad); }
+.arena__versus {
+  color: var(--text-dim);
+  font-weight: 400;
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+/* On a phone, the arena gets a shorter stage so the question below it is
+   still visible without a lot of scrolling. */
+@media (max-width: 560px) {
+  .arena__stage { aspect-ratio: 4 / 3; }
+  .arena__emoji { font-size: 1.7rem; }
+}
+
+
+/* ==========================================================================
+   12. BOSS BATTLE PANEL — health bars, villain picker, floating numbers
+   --------------------------------------------------------------------------
+   battle-ui.js fills these in from battle.js and health.js. The colours come
+   from the same variables as the rest of the app, so light and dark mode
+   both work with no extra work here.
+   ========================================================================== */
+
+/* --- the panel itself, hidden entirely in Free Practice ------------------ */
+.boss {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+
+/* --- mode switch ---------------------------------------------------------- */
+.boss__modes {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+
+.mode__btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mode__btn:hover { color: var(--text); }
+
+/* The active mode is a solid pill, so it is obvious at a glance which one you
+   are in — this matters because only Boss Battle has consequences. */
+.mode__btn.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .12);
+}
+
+
+/* --- the two health bars -------------------------------------------------- */
+.boss__hud {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.hud__name {
+  margin: 0 0 6px;
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.hud__value {
+  margin: 6px 0 0;
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.bar {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--good);
+  transition: width .35s ease, background-color .35s ease;
+}
+
+/* Amber, then red as the health runs out. */
+.bar__fill[data-level="low"]      { background: var(--ok); }
+.bar__fill[data-level="critical"] { background: var(--bad); }
+
+.hud__value[data-level="low"]      { color: var(--ok); }
+.hud__value[data-level="critical"] { color: var(--bad); font-weight: 700; }
+
+/* --- the villain's bar: one segment per hit ------------------------------- */
+.bar__segments {
+  display: flex;
+  gap: 3px;
+  height: 100%;
+  padding: 2px;
+}
+
+.bar__seg {
+  flex: 1;
+  border-radius: 3px;
+  background: var(--bad);
+  transition: background-color .3s ease, opacity .3s ease;
+}
+
+/* A hit you have already landed: the segment goes dark and flat. */
+.bar__seg.is-spent { background: var(--surface-2); }
+
+/* Match each villain to their own colour, so the bar is easy to recognise. */
+.bar--villain[data-accent="red"]    .bar__seg { background: #d94040; }
+.bar--villain[data-accent="green"]  .bar__seg { background: #1f9d55; }
+.bar--villain[data-accent="violet"] .bar__seg { background: #7b5cff; }
+.bar--villain[data-accent="red"]    .bar__seg.is-spent,
+.bar--villain[data-accent="green"]  .bar__seg.is-spent,
+.bar--villain[data-accent="violet"] .bar__seg.is-spent { background: var(--surface-2); }
+
+.hud__value.is-last { color: var(--ok); font-weight: 700; }
+.hud__value.is-out  { color: var(--good); font-weight: 700; }
+
+
+/* --- villain picker ------------------------------------------------------- */
+.boss__villains {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.villain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.villain:hover:not(:disabled) { border-color: var(--accent); }
+
+.villain:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+/* The villain you are fighting right now. */
+.villain.is-fighting {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.villain.is-defeated .villain__state { color: var(--good); }
+
+.villain__name { font-weight: 700; font-size: .9rem; }
+.villain__meta { font-size: .75rem; color: var(--text-dim); }
+.villain__state { font-size: .75rem; color: var(--text-dim); }
+
+
+/* --- the knockout banner -------------------------------------------------- */
+.lockdown {
+  margin: 14px 0 0;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--bad);
+  background: color-mix(in srgb, var(--bad) 12%, var(--surface));
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.lockdown__count {
+  display: block;
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+
+/* --- the undo button ------------------------------------------------------ */
+.btn--undo {
+  margin-top: 10px;
+  border: 1px dashed var(--ok);
+  color: var(--ok);
+  background: transparent;
+  font-size: .85rem;
+}
+
+.btn--undo:hover { background: color-mix(in srgb, var(--ok) 12%, transparent); }
+
+
+/* --- floating damage numbers over the 3D stage ---------------------------- */
+.floaters {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;      /* never blocks a click */
+  overflow: hidden;
+}
+
+.floater {
+  position: absolute;
+  top: 55%;
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .45);
+  animation: floater-rise 1.1s ease-out forwards;
+}
+
+/* Over Batman, or over the villain, so it is obvious who it happened to. */
+.floater--player  { left: 22%; }
+.floater--villain { left: 74%; }
+
+.floater--hurt { color: #ff6b6b; }
+.floater--heal { color: #7ee2a8; }
+.floater--hit  { color: #ffd166; }
+
+@keyframes floater-rise {
+  from { opacity: 0; transform: translateY(8px) scale(.85); }
+  20%  { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-38px) scale(1); }
+}
+
+/* Respect the system "reduce motion" setting. */
+@media (prefers-reduced-motion: reduce) {
+  .floater { animation: none; opacity: 1; top: 45%; }
+  .bar__fill, .bar__seg { transition: none; }
+}
+
+
+/* --- the victory panel ---------------------------------------------------- */
+.victory {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 10, 14, .62);
+}
+
+.victory__box {
+  width: min(440px, 100%);
+  padding: 24px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.victory__title { margin: 0 0 8px; font-size: 1.4rem; }
+.victory__line  { margin: 0 0 18px; color: var(--text-dim); line-height: 1.6; }
+.victory__actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+
+/* --- screen-reader-only text (used for battle announcements) ------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
+/* --- small phones: stack the bars and the picker -------------------------- */
+@media (max-width: 560px) {
+  .boss__hud { grid-template-columns: 1fr; gap: 10px; }
+  .boss__villains { grid-template-columns: 1fr; }
+  .villain { flex-direction: row; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .villain__state { margin-left: auto; }
+}

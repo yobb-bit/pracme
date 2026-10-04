@@ -1,0 +1,605 @@
+[
+  {
+    "id": "net-tcp-udp",
+    "category": "Networking",
+    "difficulty": "neutral",
+    "question": "What is the difference between TCP and UDP?",
+    "analogy": "TCP is a registered letter that confirms every delivery. UDP is shouting across a street: fast, but you never find out whether it arrived.",
+    "modelAnswer": "TCP is connection-oriented: it uses a three-way handshake, numbers every packet, retransmits anything lost and delivers them in order. UDP is connectionless: it sends datagrams with no setup and no guarantees, which makes it lower latency and cheaper, at the cost of possible loss or reordering. I would pick TCP when correctness matters (HTTP, email, file transfer) and UDP for real-time work where a late packet is worse than a lost one (video calls, gaming, DNS).",
+    "example": "When you open a website, the page loads over TCP so nothing is garbled. A Discord voice call uses UDP, because dropping 20ms of audio beats waiting for a retransmit.",
+    "keyPoints": [
+      "TCP is connection-oriented, UDP is connectionless",
+      "TCP guarantees delivery and ordering, UDP does not",
+      "TCP is slower due to handshakes and retransmissions",
+      "UDP is faster and used for streaming, gaming, DNS"
+    ]
+  },
+  {
+    "id": "net-url-flow",
+    "category": "Networking",
+    "difficulty": "neutral",
+    "question": "What happens when you type a URL into the browser and press Enter?",
+    "analogy": "Your browser is a detective following a chain of clues: ask the phone book for a name, knock on the door, show ID, request the document, then fetch every picture the document points to.",
+    "modelAnswer": "The browser first checks its own cache, then asks a DNS resolver to turn the hostname into an IP address. It opens a TCP connection to that IP and performs a TLS handshake if the site is HTTPS. Then it sends an HTTP GET request for the document. The server responds with HTML, which the browser parses; while parsing it discovers and requests CSS, JavaScript and images, each a separate request. Finally it builds the DOM and CSSOM and paints the page.",
+    "example": "The Network tab in devtools shows every one of those requests, in order, with timings for DNS, connection and download.",
+    "keyPoints": [
+      "Browser checks cache, then resolves the domain via DNS",
+      "Browser opens a TCP connection (and TLS handshake for HTTPS)",
+      "Browser sends an HTTP request for the page",
+      "Server responds with HTML, browser parses it and requests sub-resources"
+    ]
+  },
+  {
+    "id": "net-http-https",
+    "category": "Networking",
+    "difficulty": "easy",
+    "question": "What is the difference between HTTP and HTTPS?",
+    "analogy": "HTTP is a postcard anyone over your shoulder can read. HTTPS is the same postcard inside a locked box that only the recipient holds the key to.",
+    "modelAnswer": "HTTPS is HTTP sent over TLS, which encrypts the traffic and authenticates the server with a certificate. That protects against eavesdropping and man-in-the-middle attacks, and it hides the URL and content from anyone on the network path. Browsers mark non-HTTPS sites as 'Not secure', and any page handling credentials or personal data must use it.",
+    "example": "The padlock in the address bar is that certificate validating. A login form sent over plain HTTP would expose the password to the network.",
+    "keyPoints": [
+      "HTTPS is HTTP over TLS, so traffic is encrypted",
+      "It protects against eavesdropping and man-in-the-middle attacks",
+      "Certificates validate the server identity",
+      "Modern browsers mark non-HTTPS sites as 'Not secure'"
+    ]
+  },
+  {
+    "id": "js-equality",
+    "category": "JavaScript",
+    "difficulty": "easy",
+    "question": "What is the difference between == and === ?",
+    "analogy": "=== compares two people by full identity. == glances at them, decides they look alike, and assumes they are the same person.",
+    "modelAnswer": "=== is strict equality: it compares both value and type with no conversion. == is loose equality: if the types differ it converts one side to a number first, so '5' == 5 is true. I always use === in application code because implicit coercion hides bugs. If you ever want loose comparison, write it out clearly instead: Number(value) == 5.",
+    "example": "0 == false is true because false becomes 0, but 0 === false is false. And NaN === NaN is false even with ===, which is why you check with Number.isNaN().",
+    "keyPoints": [
+      "=== compares value and type without coercion",
+      "== coerces types before comparing (e.g. '5' == 5)",
+      "Rule of thumb: always use ===",
+      "Edge case: NaN === NaN is false, so you need Number.isNaN"
+    ]
+  },
+  {
+    "id": "js-declarations",
+    "category": "JavaScript",
+    "difficulty": "easy",
+    "question": "Explain the difference between var, let, and const.",
+    "analogy": "var is a chalkboard for the whole room that anyone can erase. let is a sticky note valid only inside this block. const is a framed sign you cannot rewrite, though you can still swap the picture inside the frame.",
+    "modelAnswer": "var is function-scoped, so it is visible everywhere in the function and can be redeclared. let and const are block-scoped, so they only exist inside the braces they are declared in, and let cannot be redeclared in the same block. const prevents reassignment of the variable, not mutation of the value, so const user = {} can still have user.name changed. Prefer const by default and let only when reassignment is needed, because that makes data flow obvious.",
+    "example": "In for (let i = 0; ...) each iteration gets its own i, so closures created in the loop all see the right value. With var they would all see the final i.",
+    "keyPoints": [
+      "var is function-scoped, let and const are block-scoped",
+      "var can be redeclared, let cannot be redeclared in the same block",
+      "const prevents reassignment, but the value can still be mutated if it is an object",
+      "let and const are not hoisted the same way; accessing before declaration throws"
+    ]
+  },
+  {
+    "id": "js-event-loop",
+    "category": "JavaScript",
+    "difficulty": "hard",
+    "question": "What is the event loop, and why does it matter?",
+    "analogy": "One chef in a kitchen. The counter is the call stack and only one dish is worked on at a time; the express window (promise microtasks) is always cleared before the delivery window (timers).",
+    "modelAnswer": "JavaScript runs your code on a single thread with a call stack. When the stack is empty the event loop takes the next callback: microtasks from resolved promises run first, and only then macrotasks like setTimeout. Because nothing runs in parallel, any long synchronous block freezes the page: no rendering, no input handling. That is why heavy work belongs in a Web Worker or is chunked with setTimeout or requestAnimationFrame.",
+    "example": "A 500ms for loop makes the tab unresponsive and the spinner never appears, because the browser cannot paint while the stack is busy. Also, setTimeout(() => a(), 0) after Promise.resolve().then(b) runs b first.",
+    "keyPoints": [
+      "JavaScript runs on a single thread with a call stack",
+      "Async callbacks wait in queues until the stack is empty",
+      "Promises use the microtask queue, which runs before timers",
+      "Long synchronous work blocks rendering and makes the page unresponsive"
+    ]
+  },
+  {
+    "id": "js-array-object",
+    "category": "JavaScript",
+    "difficulty": "easy",
+    "question": "What is the difference between an array and an object in JavaScript?",
+    "analogy": "An array is a numbered shelf where position tells you what it is. An object is a set of labelled drawers where the label is the key.",
+    "modelAnswer": "An array is an ordered collection accessed by numeric index and it comes with methods like push, pop, map and filter. An object stores named key-value pairs and is the normal way to represent a record. Technically an array is also an object, which is why typeof [] is 'object', so use Array.isArray when you really need to tell them apart.",
+    "example": "const tags = ['js', 'css'] is an array; const user = { name: 'Ada', role: 'dev' } is an object. A list of users is an array of objects.",
+    "keyPoints": [
+      "Arrays store ordered values by index, objects store key-value pairs",
+      "Arrays have methods like push, map, and filter",
+      "Objects are used to represent records with named fields",
+      "Both are technically objects; arrays get extra behaviour"
+    ]
+  },
+  {
+    "id": "css-box-model",
+    "category": "HTML & CSS",
+    "difficulty": "easy",
+    "question": "What is the box model?",
+    "analogy": "A wrapped present: the gift is the content, the wrapping paper is padding, the box edge is the border, and the gap you leave on the table is the margin.",
+    "modelAnswer": "Every element is drawn as nested boxes: content, then padding around it, then the border, then margin outside that. The default box-sizing is content-box, meaning a width of 200px plus padding becomes wider than 200px on screen, which is a classic overflow bug. Setting box-sizing: border-box makes the declared width include padding and border, so sizes behave the way you expect. I put it in a universal reset for every project.",
+    "example": "button { padding: 0.6rem 1.2rem; } looks fine, but adding padding under content-box makes the button grow and push its neighbours around.",
+    "keyPoints": [
+      "Every element is content, padding, border, and margin",
+      "box-sizing: border-box makes width include padding and border",
+      "The default is content-box, which is why padding makes things bigger",
+      "Margin sits outside the border and creates space between elements"
+    ]
+  },
+  {
+    "id": "css-flexbox",
+    "category": "HTML & CSS",
+    "difficulty": "neutral",
+    "question": "What does the CSS Flexbox model consist of?",
+    "analogy": "Packing a suitcase: the main axis is the direction you are packing, and the cross axis is side to side. Flexbox does the arranging for you once you say which way is which.",
+    "modelAnswer": "Flexbox lays out children in one direction. flex-direction decides the main axis, justify-content distributes space along the main axis and align-items aligns items on the cross axis. It is one-dimensional, so it is ideal for toolbars, nav bars and rows or columns of cards. For a two-dimensional grid of rows and columns I would use CSS Grid instead.",
+    "example": "A nav bar is display: flex with justify-content: space-between to push the links to the edges, and align-items: center to line them up vertically.",
+    "keyPoints": [
+      "A main axis and a cross axis, defined by flex-direction",
+      "justify-content aligns items on the main axis",
+      "align-items aligns items on the cross axis",
+      "Flexbox is one-dimensional: use Grid for rows and columns"
+    ]
+  },
+  {
+    "id": "css-responsive",
+    "category": "HTML & CSS",
+    "difficulty": "neutral",
+    "question": "How do you make a website responsive?",
+    "analogy": "A shopfront with an adjustable awning: it stretches with the weather instead of the building having to change shape.",
+    "modelAnswer": "I design mobile-first with a fluid layout: relative units like rem and percentages instead of fixed pixels, and max-width on images so they never overflow. Then I add breakpoints with media queries where the layout actually needs to change, and I use clamp() for font sizes that should scale smoothly between two values. Finally I test in devtools device mode and check that tap targets are large enough.",
+    "example": "font-size: clamp(1rem, 2.5vw, 1.5rem) gives a heading that grows with the viewport, and a media query at 700px switches a two-column grid to one column.",
+    "keyPoints": [
+      "Use a fluid layout with relative units instead of fixed pixels",
+      "Apply media queries for breakpoints, or use clamp() for fluid sizing",
+      "Make images responsive with max-width: 100%",
+      "Design mobile-first and test with the browser devtools device toolbar"
+    ]
+  },
+  {
+    "id": "html-semantic",
+    "category": "HTML & CSS",
+    "difficulty": "easy",
+    "question": "What are semantic HTML elements and why do they matter?",
+    "analogy": "A floor plan labels rooms as kitchen, bedroom and bathroom, so everyone knows what each space is. A pile of walls all labelled 'box' tells nobody anything.",
+    "modelAnswer": "Semantic elements such as header, nav, main, section, article, aside and footer carry meaning about what the content is, unlike a div which carries none. That meaning is what screen readers use to build a navigable outline, what search engines use to understand the page, and what makes the markup readable for other developers. Style them however you like with CSS rather than choosing tags for how they look.",
+    "example": "A screen reader user can jump between headings or landmarks to skip the nav and go straight to main content, but only if those tags exist.",
+    "keyPoints": [
+      "Elements like header, nav, main, section, article, and footer describe meaning",
+      "They improve accessibility, since screen readers use them to navigate",
+      "They give better SEO than a div soup",
+      "Use CSS to control how they look instead of choosing tags by appearance"
+    ]
+  },
+  {
+    "id": "db-sql-nosql",
+    "category": "Databases",
+    "difficulty": "neutral",
+    "question": "What is the difference between SQL and NoSQL databases?",
+    "analogy": "SQL is a spreadsheet with strict columns everyone must fill in. NoSQL is a folder of postcards where each card can have whatever fields that one needs.",
+    "modelAnswer": "SQL databases are relational: tables of rows with a fixed schema, joined with keys and queried with SQL. They suit structured data with clear relationships and give you transactions and constraints. NoSQL stores documents, key-value pairs or graphs and is usually schema-flexible, which helps when records vary in shape. It also tends to scale horizontally across servers more easily. I would choose based on the shape of the data and the access patterns, not on popularity.",
+    "example": "Invoices with fixed line items belong in SQL. A product catalogue where each category carries different attributes often fits a document store better.",
+    "keyPoints": [
+      "SQL is relational with tables and a fixed schema",
+      "NoSQL stores documents, key-value pairs, or graphs and is often schema-flexible",
+      "SQL scales vertically, NoSQL often scales horizontally",
+      "The right choice depends on the shape of your data and access patterns"
+    ]
+  },
+  {
+    "id": "db-normalisation",
+    "category": "Databases",
+    "difficulty": "hard",
+    "question": "What is database normalization, and what are the normal forms?",
+    "analogy": "One fact, one home. If your phone number is written in five notebooks, changing it means editing all five and you will eventually miss one.",
+    "modelAnswer": "Normalisation organises tables to remove redundancy and update anomalies. 1NF means every cell holds a single atomic value with no repeating groups. 2NF means no non-key column depends on only part of a composite key. 3NF means no non-key column depends on another non-key column, which removes transitive dependencies. You do not have to reach 3NF everywhere: deliberate denormalisation is a normal trade-off when read-heavy performance matters more than perfect normalisation.",
+    "example": "Instead of storing course_name on every enrolment row, store it once in a courses table and join. Then renaming a course is a single UPDATE.",
+    "keyPoints": [
+      "Normalization organizes data to reduce redundancy",
+      "1NF: atomic values, no repeating groups",
+      "2NF: no partial dependency on a composite key",
+      "3NF: no transitive dependency; denormalization is a deliberate trade-off for speed"
+    ]
+  },
+  {
+    "id": "db-indexes",
+    "category": "Databases",
+    "difficulty": "neutral",
+    "question": "What is an index, and what is the trade-off of using one?",
+    "analogy": "The index at the back of a book. You flip straight to the right page instead of reading every page, but the book has become heavier.",
+    "modelAnswer": "An index is a separate data structure, usually a B-tree, that keeps keys sorted so the database can find matching rows without a full table scan. Reads that use it get dramatically faster. The cost is on writes: every insert, update and delete must also update the index, so they get slower and use more disk and memory. Index the columns you actually filter and join on, and check with EXPLAIN that the query uses them.",
+    "example": "A users table queried by email on every login should have an index on email. An index on a column you never filter by is pure overhead.",
+    "keyPoints": [
+      "An index is a data structure that speeds up row lookups",
+      "Reads get faster, but writes get slower because the index must be updated",
+      "Unnecessary indexes waste disk and memory",
+      "Too many indexes can cause the optimizer to pick a bad plan"
+    ]
+  },
+  {
+    "id": "design-url-shortener",
+    "category": "System Design",
+    "difficulty": "hard",
+    "question": "How would you design a URL shortener like bit.ly?",
+    "analogy": "A cloakroom: you hand over your coat and get a small numbered tag that is far easier to remember and to type.",
+    "modelAnswer": "An API receives a long URL and returns a short code. The code comes from either an auto-incrementing id encoded in base62, or a hash of the URL with collision checking. The mapping is stored in a fast key-value store for lookups, with a database of record for durability and analytics. Reads go through a cache for popular links, the redirect is a 301 if the target will not change and 302 if it might, and I would add custom aliases plus click tracking.",
+    "example": "bit.ly/3xKq9f is roughly seven characters because base62 packs a large id into few characters. A 301 lets browsers cache the redirect, so the second click skips your server entirely.",
+    "keyPoints": [
+      "API receives a long URL and returns a short code",
+      "Generate a short unique ID, or encode an incrementing counter as base62",
+      "Store the mapping in a key-value store, with a database for durability",
+      "Add caching for hot links, redirect with HTTP 301 or 302, and track click analytics"
+    ]
+  },
+  {
+    "id": "design-load-balancing",
+    "category": "System Design",
+    "difficulty": "neutral",
+    "question": "What is load balancing and why do you need it?",
+    "analogy": "A host at a restaurant door who seats guests at whichever table is least busy, so no single waiter is overwhelmed.",
+    "modelAnswer": "A load balancer sits in front of your servers and distributes incoming requests across them. It removes the single point of failure and lets you add machines for capacity. Common strategies are round robin, least connections and IP hash. It also terminates TLS and runs health checks so it stops sending traffic to a server that has died.",
+    "example": "Nginx in front of four identical API servers. If one stops responding, the health check removes it and the other three take the load.",
+    "keyPoints": [
+      "A load balancer distributes incoming requests across multiple servers",
+      "It removes single points of failure and allows horizontal scaling",
+      "Common algorithms: round robin, least connections, IP hash",
+      "Also handles TLS termination and health checking of unhealthy servers"
+    ]
+  },
+  {
+    "id": "design-scaling",
+    "category": "System Design",
+    "difficulty": "neutral",
+    "question": "What is the difference between vertical and horizontal scaling?",
+    "analogy": "Hiring one bigger chef, or opening more kitchens. The bigger chef is simpler until there is no bigger chef to hire.",
+    "modelAnswer": "Vertical scaling means making one machine stronger: more CPU, RAM or faster disk. It needs no application changes, but it has a hard ceiling and the machine is still a single point of failure. Horizontal scaling means adding more machines, which scales much further and survives failures, but it requires the application to be stateless so any instance can serve any request, plus a load balancer to route traffic. In practice you do both, vertically for headroom and horizontally for growth.",
+    "example": "Doubling RAM from 8GB to 16GB is vertical. Running the app on eight small instances behind a load balancer, with sessions in Redis rather than memory, is horizontal.",
+    "keyPoints": [
+      "Vertical scaling means a bigger machine: more CPU, RAM, or disk",
+      "Horizontal scaling means adding more machines",
+      "Vertical is simpler but has an upper limit and still a single point of failure",
+      "Horizontal scales further but needs stateless services and coordination"
+    ]
+  },
+  {
+    "id": "git-merge-rebase",
+    "category": "Git & Workflow",
+    "difficulty": "neutral",
+    "question": "What is the difference between git merge and git rebase?",
+    "analogy": "Merge lays the two timelines side by side and joins them at a junction. Rebase lifts your commits and replays them on top of the other line, so history stays one straight road.",
+    "modelAnswer": "git merge creates a commit with two parents, recording that two lines came together without altering either history. git rebase replays your commits on top of another branch, producing a linear history but with new commit hashes, so it rewrites history. That means you must never rebase a branch other people have already pulled. In practice I rebase my own feature branch to keep it tidy, and merge with --no-ff into main.",
+    "example": "After rebasing onto main, my branch shows five clean commits instead of five commits plus a merge commit and a 'Merge branch main into feature' detour.",
+    "keyPoints": [
+      "Merge creates a commit with two parents and keeps history as-is",
+      "Rebase replays your commits on top of another branch for a linear history",
+      "Rebasing rewrites history, so never rebase shared branches",
+      "Use merge for shared branches, rebase for your own feature branch"
+    ]
+  },
+  {
+    "id": "git-pull-fetch",
+    "category": "Git & Workflow",
+    "difficulty": "easy",
+    "question": "What is the difference between git pull and git fetch?",
+    "analogy": "fetch downloads the mail but leaves it unopened. pull downloads it and puts it straight on your desk.",
+    "modelAnswer": "git fetch downloads new commits and tags from the remote into your remote-tracking branches, but it does not touch your working tree or your current branch. git pull is fetch followed by either a merge or a rebase into your current branch. Using fetch first lets you see what changed, and if you want linear history, git pull --rebase replays your work on top instead of adding a merge commit.",
+    "example": "git fetch origin then git log origin/main tells you what is new before you decide to merge it in.",
+    "keyPoints": [
+      "fetch downloads new commits but does not change your working tree",
+      "pull is fetch plus merge (or rebase)",
+      "fetch lets you inspect changes before integrating them",
+      "git pull --rebase keeps a linear history when integrating"
+    ]
+  },
+
+  {
+    "id": "sit-blocked-pr",
+    "category": "Behavioural",
+    "difficulty": "neutral",
+    "type": "situational",
+    "question": "You are the last reviewer on a teammate's PR, they are waiting to release, and you are about to log off for the day. What do you do?",
+    "analogy": "A colleague is standing at the top of a half-finished staircase waiting for you to pass the toolbox. Leaving them there is a choice, not a default.",
+    "modelAnswer": "I would first find out how long it has been waiting and how risky the change is. If it is small and looks fine, I review it properly but quickly and say it was quick. If I genuinely cannot get to it today, I tell the team in the shared channel with a concrete time when I will, rather than going quiet. If it is urgent and I am not the right reviewer, I find someone else rather than rubber-stamping something I have not read. Either way I leave a clear status, so nobody is blocked in silence.",
+    "clarifyingQuestions": [
+      "How long has the PR been waiting, and is there a customer or release deadline attached?",
+      "How large is the change, and does it touch data, payments or authentication?",
+      "Are other reviewers available, and do they have context that I do not?"
+    ],
+    "goodApproach": [
+      "Ask how urgent it is and what the deadline actually is.",
+      "Size up the change: a few small commits I can review now, or something that needs a proper session.",
+      "If I can review it safely, do that first and flag that it was quick.",
+      "If I cannot, commit to a specific time and post it in the team channel.",
+      "If nobody is free and it is genuinely urgent, find a second reviewer instead of approving it unread."
+    ],
+    "commonMistakes": [
+      "Approving it unread just to unblock someone.",
+      "Going silent, so the teammate finds out hours later that nothing is happening.",
+      "Promising 'tomorrow' without checking my own calendar, then missing it again.",
+      "Blaming the teammate for sending it late."
+    ],
+    "followUp": "Tell me about a time you had to say no to a deadline. How did you communicate it?",
+    "example": "A Friday release with the only reviewer already home is a normal problem, and the fix is a message, not a silent thumbs-up.",
+    "keyPoints": [
+      "Establish urgency and blast radius before acting",
+      "Communicate a concrete plan, even when the plan is 'not today'",
+      "Never approve code you have not read to unblock someone"
+    ]
+  },
+
+  {
+    "id": "sit-prod-bug",
+    "category": "Behavioural",
+    "difficulty": "hard",
+    "type": "situational",
+    "question": "You find a bug in production affecting about 2% of users. A release is supposed to go out in an hour. What do you do?",
+    "analogy": "A small leak in a roof during a rainstorm. You put a bucket under it first, then you fix the roof properly once the weather passes.",
+    "modelAnswer": "Stopping the bleeding and telling people comes first. I would assess severity and how many users are affected, then choose between a forward fix, meaning a tiny hotfix or a rollback, and a proper fix later. I would communicate early: what is broken, who is affected, and what I am doing, even before the fix is ready. Then I fix it forward, verify with logs and error rates rather than one manual click, and write a short blameless post-mortem about why our checks missed it.",
+    "clarifyingQuestions": [
+      "Is data being lost or corrupted, or is it a wrong value and a failed request?",
+      "Can I roll back cleanly, and was the most recent deploy the cause?",
+      "Who else is on call, and who needs to know before I touch a release?"
+    ],
+    "goodApproach": [
+      "Assess impact quickly: how many users, is data at risk, is it getting worse?",
+      "Decide between rollback and the smallest possible forward fix.",
+      "Communicate early and honestly, before you have a fix, not after.",
+      "Apply the fix and verify it with logs and error rates.",
+      "Write a blameless post-mortem and add the test that would have caught it."
+    ],
+    "commonMistakes": [
+      "Staying silent until the fix is finished, so nobody knows there is a problem.",
+      "Debugging on production for an hour instead of rolling back first.",
+      "Freezing the release entirely without telling stakeholders why.",
+      "Writing a post-mortem that blames a person rather than the process."
+    ],
+    "followUp": "How do you decide between rolling back and fixing forward?",
+    "example": "A checkout page returning a 500 for 2% of users: roll back the deploy that caused it, tell support, then fix it properly tomorrow.",
+    "keyPoints": [
+      "Mitigate first, debug second",
+      "Communicate before you have resolved it",
+      "Verify the fix with monitoring, then prevent a repeat"
+    ]
+  },
+
+  {
+    "id": "sit-vague-feature",
+    "category": "Behavioural",
+    "difficulty": "neutral",
+    "type": "situational",
+    "question": "A stakeholder asks you to build a feature 'just like Instagram's feed'. How do you respond?",
+    "analogy": "Being asked for 'a road to the coast'. You can build a road, but first you need to know which coast, which route, and how fast it has to be.",
+    "modelAnswer": "I would neither say no nor start coding. I would ask what problem the feed is meant to solve and who it is for, then restate it as the smallest concrete slice with a success measure. 'Just like Instagram' is a reference, not a specification: that feed depends on ranking, moderation and ad targeting, which are separate projects. So I offer the smallest version that tests the assumption, give an estimate for that, and flag the open questions. If they still want the whole thing, we can discuss phasing, cost and what gets cut.",
+    "clarifyingQuestions": [
+      "What problem does this solve for users, and how would we know it worked?",
+      "Who is the first group of users we are building this for?",
+      "What is the deadline and the budget, and what else would we drop for it?",
+      "When you say 'like Instagram', do you mean the look, the behaviour, or the ranking?"
+    ],
+    "goodApproach": [
+      "Accept the intent, not the vagueness: that sounds important, let me understand the goal.",
+      "Ask what problem it solves and how we would measure success.",
+      "Point out that a feed also needs ranking and moderation, which are their own work.",
+      "Propose the smallest slice that tests the assumption, with an estimate.",
+      "Write down the open questions and who answers them."
+    ],
+    "commonMistakes": [
+      "Saying we cannot do that and ending the conversation there.",
+      "Building the whole thing because that is what was literally asked for.",
+      "Firing twenty questions at once so the stakeholder shuts down.",
+      "Giving an estimate before understanding the goal behind the request."
+    ],
+    "followUp": "How would you present this back to the stakeholder?",
+    "example": "'A feed like Instagram' usually becomes 'people want to see posts from people they follow', which is a week of work rather than a quarter.",
+    "keyPoints": [
+      "Turn a vague request into a measurable problem",
+      "Separate what was asked for from what was meant",
+      "Offer the smallest testable slice, then talk about scope honestly"
+    ]
+  },
+
+  {
+    "id": "sit-disagreement",
+    "category": "Behavioural",
+    "difficulty": "easy",
+    "type": "situational",
+    "question": "In a meeting you believe the technical decision being made is wrong. What do you do?",
+    "analogy": "Watching a group carry a table towards a step. You can shout 'wrong door', or you can walk over and point at the step; the second one usually works better.",
+    "modelAnswer": "I pick the moment. If the decision is cheap and reversible, I usually let it go and take the learning, because arguing about small things costs trust I will need later. If it is expensive or hard to undo, I raise it clearly and briefly, with a concrete alternative rather than just an objection. I frame it around the shared goal: we want fewer deploy errors, and this change increases them because... If I still disagree after my point is made, I commit to the decision and document my concern, because the team needs a decision more than it needs consensus.",
+    "clarifyingQuestions": [
+      "How reversible is this decision: can we undo it in a day, or in a quarter?",
+      "What is this team's normal way of handling disagreement?",
+      "Am I confident, or am I the only one who thinks this?"
+    ],
+    "goodApproach": [
+      "Decide if it is worth raising: if it is cheap and reversible, let it go.",
+      "Raise it briefly, at a sensible moment, with a concrete alternative.",
+      "Frame it around the shared goal rather than around being right.",
+      "If the decision holds, commit to it and note the concern in writing."
+    ],
+    "commonMistakes": [
+      "Arguing the same point repeatedly after it has already been made.",
+      "Raising it publicly as a surprise, to embarrass someone.",
+      "Agreeing publicly and then complaining privately afterwards.",
+      "Blocking an entire meeting over a small detail."
+    ],
+    "followUp": "How do you handle it when you find out you were the one who was wrong?",
+    "example": "A library that adds 3MB to the bundle: make the point once with numbers, and if the team decides against you, help make it work.",
+    "keyPoints": [
+      "Weigh reversibility and cost before spending social capital",
+      "Object with evidence and an alternative, not with adjectives",
+      "Once a decision is made, commit to it"
+    ]
+  },
+
+  {
+    "id": "log-event-loop-order",
+    "category": "JavaScript",
+    "difficulty": "hard",
+    "type": "logical",
+    "question": "In what order do these numbers get logged?",
+    "code": "console.log(\"1\");\nsetTimeout(() => console.log(\"2\"), 0);\nPromise.resolve().then(() => console.log(\"3\"));\nconsole.log(\"4\");",
+    "answer": "1, 4, 3, 2",
+    "analogy": "One chef in a kitchen. The order rail is emptied first, the express window for a promised dessert is cleared before the scheduled delivery, and timers are only picked up once everything else is clear.",
+    "modelAnswer": "Synchronous code runs first, so 1 and 4 print immediately. Then the call stack empties and the microtask queue is drained, so the promise callback prints 3. Only after all microtasks are done does the event loop take the setTimeout callback, so 2 prints last. setTimeout with a delay of 0 means as soon as possible after the current work, not immediately.",
+    "clarifyingQuestions": [
+      "Are we assuming the promise is already resolved and nothing else is queued?",
+      "Do the console logs appear in the order they were called?",
+      "Does the timer start counting at 0 ms or at the next millisecond?"
+    ],
+    "goodApproach": [
+      "Run the synchronous lines top to bottom: that gives 1 and 4.",
+      "Ask what is sitting in the microtask queue and the macrotask queue at that point.",
+      "Apply the rule: promise callbacks drain before timers.",
+      "Conclude 3 before 2, giving 1, 4, 3, 2.",
+      "Check it by running it, then explain why rather than memorising it."
+    ],
+    "commonMistakes": [
+      "Answering 1, 4, 2, 3 because setTimeout with 0 looks immediate.",
+      "Assuming a timer can fire while synchronous code is still running.",
+      "Forgetting that the whole microtask queue is drained before any timer runs."
+    ],
+    "followUp": "What would change if the setTimeout delay were 100 ms instead of 0?",
+    "example": "This ordering is why an awaited promise callback always runs before a setTimeout, which surprises people writing retry logic.",
+    "keyPoints": [
+      "Synchronous code first, then microtasks, then timers",
+      "A 0 ms timeout is still a macrotask",
+      "The full microtask queue drains before the next macrotask"
+    ]
+  },
+
+  {
+    "id": "log-var-loop",
+    "category": "JavaScript",
+    "difficulty": "neutral",
+    "type": "logical",
+    "question": "What does this log, and why?",
+    "code": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}",
+    "answer": "3, 3, 3 — all three callbacks share one i, which is 3 by the time any of them runs",
+    "analogy": "Three people pointing at the same whiteboard number instead of writing their own number down. By the time they look, the number has been erased and rewritten to 3.",
+    "modelAnswer": "var is function-scoped, so all three arrow functions close over one shared i variable. The loop runs to completion and leaves i equal to 3 before any timer callback fires. Each callback therefore reads the same variable at its final value and logs 3 three times. Changing var to let gives each iteration its own binding, so it logs 0, 1, 2.",
+    "clarifyingQuestions": [
+      "Do the callbacks read i when they fire, or capture its value when they are created?",
+      "Does the loop always run to completion before anything else happens?",
+      "Do the timers fire during the loop or after it?"
+    ],
+    "goodApproach": [
+      "Check the scope of i: var belongs to the whole function, not to the loop.",
+      "Remember that the callbacks run later, after the loop has finished.",
+      "Read the final value of the shared i, which is 3.",
+      "Contrast it with let, which would log 0, 1, 2."
+    ],
+    "commonMistakes": [
+      "Answering 0, 1, 2 because the loop counter looked like it was captured.",
+      "Assuming setTimeout with 0 runs during the loop.",
+      "Saying it logs nothing because the loop scope has ended."
+    ],
+    "followUp": "What happens if you change var to let?",
+    "example": "This exact bug caused real problems in older code that attached click handlers inside loops.",
+    "keyPoints": [
+      "var is function-scoped, so every closure shares one variable",
+      "Callbacks read the value at call time, not at creation time",
+      "let creates a new binding per iteration"
+    ]
+  },
+
+  {
+    "id": "log-coercion",
+    "category": "JavaScript",
+    "difficulty": "easy",
+    "type": "logical",
+    "question": "What is logged on each line?",
+    "code": "console.log([] == ![]);   // line 1\nconsole.log([] === ![]);  // line 2",
+    "answer": "Line 1 logs true, line 2 logs false",
+    "analogy": "Asking whether an empty box is the same as 'there is no box'. A loose question says yes because both describe the same idea; a strict one notices they are different things.",
+    "modelAnswer": "On line 1, == compares two objects, which are never loosely equal, so it converts both to primitives. The array [] becomes an empty string, and ![] is false, which also becomes 0. An empty string compared with 0 is true because both become 0. On line 2 there is no conversion at all: [] is an object and false is a boolean, so the types differ and the result is false.",
+    "clarifyingQuestions": [
+      "Does == convert both sides, and in what order?",
+      "How does an array become a primitive here?",
+      "Does the negation operator return false or the number 0?"
+    ],
+    "goodApproach": [
+      "Take line 2 first: strict equality never converts, so the types differ and it is false.",
+      "For line 1, remember [] is an object, so it converts to the empty string.",
+      "Convert ![]: an empty array is truthy, so ![] is false, which converts to 0.",
+      "Compare an empty string with 0: both become 0, so true."
+    ],
+    "commonMistakes": [
+      "Saying line 1 is false because two objects are never equal.",
+      "Forgetting that an empty array is truthy, so ![] is false.",
+      "Claiming == converts only one side of the comparison."
+    ],
+    "followUp": "Why do teams ban == with a linter rule?",
+    "example": "This is why linting rules ban == entirely: the coercion rules are legal but almost nobody can read them quickly.",
+    "keyPoints": [
+      "Loose equality converts types, strict equality does not",
+      "An empty array is truthy, so ![] is false",
+      "Objects convert to primitives before loose comparison"
+    ]
+  },
+
+  {
+    "id": "log-reference-mutation",
+    "category": "JavaScript",
+    "difficulty": "neutral",
+    "type": "logical",
+    "question": "What does the console.log line print, and why does the last line fail?",
+    "code": "const a = { count: 1 };\nconst b = a;\nb.count = 99;\nconst c = { count: 1 };\n\nconsole.log(a.count, b.count, c.count);\na = { count: 5 };",
+    "answer": "99 99 1, and the final line throws a TypeError",
+    "analogy": "Two labels stuck to the same present. Writing on the second label writes on the shared present; the other present is untouched. You cannot then re-stick the first label onto a different present.",
+    "modelAnswer": "const a and const b hold references to the same object, so changing b.count also changes a.count and both read 99. The separate object c has its own count, so it stays 1. The final line tries to point a at a different object. const stops the variable being reassigned, not the contents of the object, so assigning to a throws a TypeError, because modules always run in strict mode.",
+    "clarifyingQuestions": [
+      "Do b and a hold references to the same object?",
+      "Does const prevent changing properties, or prevent reassigning the variable?",
+      "Is this a module or a plain script, since that decides strict mode?"
+    ],
+    "goodApproach": [
+      "Draw the references: a and b point at one object, c at another.",
+      "Apply b.count = 99: that mutates the shared object, so a.count becomes 99 too.",
+      "Note that c is untouched, so it stays 1.",
+      "Separate the two meanings of const: no reassignment, but mutation is allowed.",
+      "Conclude the log prints 99 99 1 and the last line throws."
+    ],
+    "commonMistakes": [
+      "Saying const makes objects immutable.",
+      "Expecting 1 99 1 because b is assumed to be a copy.",
+      "Assuming the final line silently fails instead of throwing."
+    ],
+    "followUp": "How would you deep copy the object so changing b cannot affect a?",
+    "example": "Shallow copies with spread only go one level deep, so nested objects stay shared, which is a common source of state bugs.",
+    "keyPoints": [
+      "Passing an object around passes a reference, not a copy",
+      "const blocks reassignment but not mutation",
+      "Reassigning a const throws a TypeError in strict mode"
+    ]
+  },
+
+  {
+    "id": "log-two-pointers",
+    "category": "Problem Solving",
+    "difficulty": "hard",
+    "type": "logical",
+    "question": "Given a sorted array of numbers and a target, there is exactly one pair of indices whose values add up to the target. Describe a one-pass approach with no extra data structure, and explain why it is correct.",
+    "answer": "Two pointers from both ends: move the left pointer right when the sum is too small and the right pointer left when the sum is too big. Each step discards a value that cannot be part of any valid pair, so O(n) time and O(1) space.",
+    "analogy": "Two people starting at opposite ends of a number line, walking towards each other and discarding anyone who is too big or too small for the pair they were just offered.",
+    "modelAnswer": "Place one pointer at each end and add the two values. If the sum equals the target, return the two indices. If the sum is too small, the left pointer must move right, because the current left value cannot reach the target with anything still in range. If the sum is too big, the right pointer moves left for the mirror-image reason. Every step eliminates one candidate that provably cannot be part of a valid pair, so no correct answer is thrown away, and the pointers meeting means no pair exists. That is O(n) time and O(1) space.",
+    "clarifyingQuestions": [
+      "Is the array guaranteed to be sorted, and can values repeat?",
+      "Do I need the indices or just the values?",
+      "Can I use extra memory, or must this stay at O(1) space?"
+    ],
+    "goodApproach": [
+      "State the invariant: every value outside the two pointers has already been ruled out.",
+      "Add the values at the two pointers.",
+      "If the sum is too small, advance the left pointer, since that value cannot pair with anything left in range.",
+      "If the sum is too big, retreat the right pointer for the same reason.",
+      "Stop when the pointers meet or cross, which proves no pair was missed."
+    ],
+    "commonMistakes": [
+      "Using a hash map, which works but ignores the sorted guarantee and needs O(n) space.",
+      "Moving both pointers at once when the sum is wrong.",
+      "Claiming correctness without explaining why a discarded value cannot be in any pair.",
+      "Forgetting what to return when no pair exists."
+    ],
+    "followUp": "What would change if the array were not sorted?",
+    "example": "The two-pointer version is one pass and constant space, which is why interviewers ask for it specifically once they have said 'sorted'.",
+    "keyPoints": [
+      "Sorted input is what makes discarding values safe",
+      "Each step removes a candidate that provably cannot be part of a pair",
+      "Result is O(n) time with O(1) extra space"
+    ]
+  }
+]

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!--
+    viewport = the "zoom to fit" hint that makes the layout usable on a phone.
+    width=device-width means "use the real screen width in CSS pixels".
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interview Practice</title>
+  <!-- An empty icon stops the browser asking for /favicon.ico, which would
+       otherwise log a 404 in the console on every single page load. -->
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+
+  <!--
+    Import map for the 3D arena.
+    Three.js's GLTFLoader is written as `import { ... } from 'three'`, and a
+    browser cannot resolve that bare word on its own. The import map points
+    those bare names at a CDN, so we can use real ES modules with no build
+    step and no node_modules. Pin the version so a future Three.js release
+    cannot break the page.
+  -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- ===== App shell ===================================================== -->
+  <main class="app">
+
+    <!--
+      ===== Boss Battle 3D stage ==========================================
+      Sits at the very top of the page. arena.js fills the canvas in and
+      fills the two names. Stage 2 will hide this panel in Free Practice and
+      add the health bars; Stage 3 adds the animations.
+      ===================================================================== -->
+    <section class="arena" id="arena">
+      <div class="arena__stage" id="arena-stage">
+        <canvas class="arena__canvas" id="arena-canvas"></canvas>
+
+        <!-- Shown while the .glb files are still downloading -->
+        <p class="arena__loading" id="arena-loading">Loading fighters…</p>
+
+        <!-- Shown instead of the canvas if this browser has no WebGL -->
+        <div class="arena__fallback" id="arena-fallback" hidden></div>
+
+        <!-- Floating damage numbers ("-15", "+10", "1 hit"). battle-ui.js
+             throws these in and throws them away again. -->
+        <div class="floaters" id="arena-floaters" aria-hidden="true"></div>
+      </div>
+
+      <p class="arena__names">
+        <span class="arena__name arena__name--player" id="arena-player-name">Batman</span>
+        <span class="arena__versus">vs</span>
+        <span class="arena__name arena__name--villain" id="arena-villain-name">Villain</span>
+      </p>
+    </section>
+
+    <!-- Header: title + live timer -->
+    <header class="app__header">
+      <div>
+        <h1>Interview Practice</h1>
+        <!-- Tabs: quiz yourself, or just study your weak spots -->
+        <nav class="tabs" aria-label="Screens">
+          <button type="button" class="tabs__btn is-active" id="tab-practice">Practice</button>
+          <button type="button" class="tabs__btn" id="tab-review">
+            Review <span class="tabs__count" id="review-count">0</span>
+          </button>
+        </nav>
+      </div>
+      <p class="timer" id="timer" aria-live="off">00:00</p>
+    </header>
+
+    <!-- Shown only if questions.json fails to load (for example when the
+         page is opened straight from the file system with file://) -->
+    <p class="error" id="load-error" hidden></p>
+
+
+    <!-- ==================================================================
+         SCREEN 1: PRACTICE
+         ================================================================== -->
+    <section class="screen" id="screen-practice">
+
+      <!-- ===== Boss Battle panel ==========================================
+           Mode switch, both health bars and the villain picker.
+           battle-ui.js fills it in and hides the whole thing in Free Practice,
+           so it is obvious when you are not actually fighting. -->
+      <section class="boss" id="boss-panel" data-mode="boss">
+
+        <div class="boss__modes" role="group" aria-label="Practice mode">
+          <button type="button" class="mode__btn is-active" data-mode="boss" aria-pressed="true">
+            <span aria-hidden="true">&#129408;</span> Boss Battle
+          </button>
+          <button type="button" class="mode__btn" data-mode="practice" aria-pressed="false">
+            <span aria-hidden="true">&#128218;</span> Free Practice
+          </button>
+        </div>
+
+        <div class="boss__hud">
+          <div class="hud hud--player">
+            <p class="hud__name">Batman</p>
+            <div class="bar bar--player">
+              <div class="bar__fill" style="width:100%"></div>
+            </div>
+            <p class="hud__value">100 / 100</p>
+          </div>
+
+          <div class="hud hud--villain">
+            <p class="hud__name" id="hud-villain-name">Easy Villain</p>
+            <!-- One box per hit: 5 boxes for the easy villain, 10 for hard -->
+            <div class="bar bar--villain">
+              <div class="bar__segments"></div>
+            </div>
+            <p class="hud__value">5 hits left</p>
+          </div>
+        </div>
+
+        <!-- Three cards: locked ones cannot be clicked -->
+        <div class="boss__villains" id="villain-picker"></div>
+
+        <!-- Appears when Batman hits 0 health -->
+        <p class="lockdown" id="lockdown" hidden></p>
+      </section>
+
+      <!-- Difficulty filter. Also built from the data, so a new difficulty
+           in questions.json appears here on its own. Hidden during a Boss
+           Battle, because the villain picks the difficulty for you. -->
+      <nav class="filters" id="difficulties" aria-label="Difficulty"></nav>
+
+      <!-- Question type: knowledge / situational / logical -->
+      <nav class="filters" id="types" aria-label="Question type"></nav>
+
+      <!-- Category filter, empty on purpose: app.js fills it in from the
+           categories found in questions.json -->
+      <nav class="filters" id="categories" aria-label="Question categories"></nav>
+
+      <!-- Progress for the current round -->
+      <p class="progress" id="progress"></p>
+
+      <!-- ===== Question card ============================================= -->
+      <section class="card">
+        <!-- Category, difficulty and type labels -->
+        <p class="tags">
+          <span class="badge" id="category"></span>
+          <span class="badge badge--difficulty" id="difficulty"></span>
+          <span class="badge badge--type" id="type"></span>
+        </p>
+
+        <!-- The question text (filled in by app.js) -->
+        <h2 class="question" id="question">Loading questions&hellip;</h2>
+
+        <!-- Code snippet, for logical questions that include one. It belongs
+             to the question itself, so it shows straight away. -->
+        <pre class="code" id="code-block" hidden><code id="code-text"></code></pre>
+
+        <!-- Your spoken/written answer -->
+        <label class="answer-label" for="answer">Your answer</label>
+        <textarea
+          id="answer"
+          class="answer"
+          rows="5"
+          placeholder="Type or speak your answer here, then check it against the key points…"
+          autocomplete="off"
+        ></textarea>
+
+        <!-- Actions: reveal the key points, admit defeat, or move on -->
+        <div class="actions">
+          <button type="button" class="btn btn--primary" id="check-btn">
+            Check my answer
+          </button>
+          <button type="button" class="btn btn--ghost" id="giveup-btn">
+            I don&rsquo;t know
+          </button>
+          <button type="button" class="btn btn--primary" id="next-btn" hidden>
+            Next question &rarr;
+          </button>
+        </div>
+
+        <!-- Appears only after something cost Batman health, and only once per
+             hit. battle-ui.js shows it from the health rules in health.js. -->
+        <button type="button" class="btn btn--undo" id="undo-btn" hidden>
+          &#8634; That was actually right &mdash; take the damage back
+        </button>
+
+        <!-- ===== Reveal area ==============================================
+             Hidden until you press a button. Every block below is optional:
+             app.js shows the ones that apply to this question type, in the
+             order listed in REVEAL_ORDER in app.js. That order works for both
+             paths — "Check my answer" and "I don't know". -->
+        <div class="reveal" id="reveal" hidden>
+
+          <section class="reveal__block reveal__block--analogy" id="reveal-analogy">
+            <h3>Think of it like this</h3>
+            <p id="analogy"></p>
+          </section>
+
+          <section class="reveal__block reveal__block--clarifying" id="reveal-clarifying">
+            <h3>Ask these first</h3>
+            <ul id="clarifying-list"></ul>
+          </section>
+
+          <section class="reveal__block reveal__block--approach" id="reveal-approach">
+            <h3>A good approach</h3>
+            <ol id="approach-list"></ol>
+          </section>
+
+          <section class="reveal__block reveal__block--mistakes" id="reveal-mistakes">
+            <h3>Common mistakes</h3>
+            <ul id="mistakes-list"></ul>
+          </section>
+
+          <section class="reveal__block reveal__block--model" id="reveal-model">
+            <h3>Model answer</h3>
+            <p id="model-answer"></p>
+          </section>
+
+          <section class="reveal__block reveal__block--answer" id="reveal-answer">
+            <h3>Answer</h3>
+            <p id="final-answer"></p>
+          </section>
+
+          <section class="reveal__block reveal__block--example" id="reveal-example">
+            <h3>In real life</h3>
+            <p id="example"></p>
+          </section>
+
+          <section class="reveal__block reveal__block--followup" id="reveal-followup">
+            <h3>They would probably ask</h3>
+            <p id="followup"></p>
+          </section>
+
+          <section class="reveal__block reveal__block--keypoints" id="reveal-keypoints">
+            <h3>Key points</h3>
+            <ul id="keypoints-list"></ul>
+          </section>
+        </div>
+
+        <!-- Self-rating, shown after "Check my answer" -->
+        <div class="rating" id="rating" hidden>
+          <p class="rating__question">How did you do?</p>
+          <div class="rating__buttons">
+            <button type="button" class="chip chip--good" data-rating="nailed">Nailed it</button>
+            <button type="button" class="chip chip--ok"   data-rating="partly">Partly</button>
+            <button type="button" class="chip chip--bad"  data-rating="missed">Missed it</button>
+          </div>
+        </div>
+
+        <!-- Shown instead of the rating when you pressed "I don't know" -->
+        <p class="note" id="missed-note" hidden>Saved as <strong>Missed</strong> &mdash; it will come back sooner.</p>
+      </section>
+
+      <!-- ===== Session summary ============================================ -->
+      <section class="summary">
+        <h2 class="summary__title">This session</h2>
+        <div class="summary__stats">
+          <span class="stat stat--good"><strong id="stat-nailed">0</strong> Nailed</span>
+          <span class="stat stat--ok"><strong id="stat-partly">0</strong> Partly</span>
+          <span class="stat stat--bad"><strong id="stat-missed">0</strong> Missed</span>
+        </div>
+
+        <button type="button" class="btn btn--ghost btn--small" id="clear-btn">
+          Clear saved results
+        </button>
+      </section>
+    </section>
+
+
+    <!-- ==================================================================
+         SCREEN 2: REVIEW
+         Study list only: no quiz, no timer. Questions you keep missing are
+         at the top, each with its analogy and model answer.
+         ================================================================== -->
+    <section class="screen" id="screen-review" hidden>
+      <h2 class="screen__title">Needs work</h2>
+      <p class="screen__hint" id="review-hint"></p>
+      <ul class="review" id="review-list"></ul>
+    </section>
+
+    <!-- ===== Victory / finale panel =====================================
+         Shown after a villain is beaten. The button says either "Fight the
+         next one" or, after the last villain, "Rematch". -->
+    <div class="victory" id="victory" hidden>
+      <div class="victory__box">
+        <h2 class="victory__title" id="victory-title">Defeated</h2>
+        <p class="victory__line" id="victory-line"></p>
+        <div class="victory__actions">
+          <button type="button" class="btn btn--primary" id="victory-next">Next villain</button>
+          <button type="button" class="btn btn--ghost" id="victory-rematch" hidden>Rematch</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!--
+    app.js is now an ES module too, so the rules files can talk to each other
+    with `import` instead of guessing at globals. Load order is handled by the
+    imports themselves: app.js -> battle-ui.js -> battle.js -> health.js.
+  -->
+  <script type="module" src="app.js"></script>
+  <script type="module" src="arena.js"></script>
+</body>
+</html>
