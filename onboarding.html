@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Onboarding - Interview Practice</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="onboarding.js"></script>
+</head>
+<body>
+  <main class="app">
+    <section class="onboarding" aria-live="polite">
+      <header class="onboarding__header">
+        <h1>Setup your practice</h1>
+        <p id="onboarding-progress" aria-live="off">Step 1 of 5</p>
+      </header>
+
+      <div class="onboarding__step" data-step="1" aria-labelledby="step1-title">
+        <h2 id="step1-title">Choose your hero</h2>
+        <p>Select exactly one hero to continue.</p>
+        <div id="heroes-list" class="heroes" role="radiogroup" aria-label="Heroes"></div>
+        <p id="hero-err" class="error" aria-live="assertive"></p>
+      </div>
+
+      <div class="onboarding__step" data-step="2" aria-labelledby="step2-title" hidden>
+        <h2 id="step2-title">Name your hero</h2>
+        <label for="hero-name">Hero name (2–16 chars)</label>
+        <input id="hero-name" type="text" inputmode="text" autocomplete="name" maxlength="20" aria-describedby="name-err">
+        <p id="name-err" class="error" aria-live="assertive"></p>
+        <p class="help">Only letters (any language), numbers, spaces, hyphen, apostrophe, period.</p>
+      </div>
+
+      <div class="onboarding__step" data-step="3" aria-labelledby="step3-title" hidden>
+        <h2 id="step3-title">Pick your topics</h2>
+        <p>Choose at least one. Chips built from question categories.</p>
+        <div id="topics-wrap"></div>
+        <p id="topics-err" class="error" aria-live="assertive"></p>
+      </div>
+
+      <div class="onboarding__step" data-step="4" aria-labelledby="step4-title" hidden>
+        <h2 id="step4-title">How it works</h2>
+        <div id="howitworks" class="howitworks"></div>
+      </div>
+
+      <div class="onboarding__step" data-step="5" aria-labelledby="step5-title" hidden>
+        <h2 id="step5-title">You're ready</h2>
+        <div class="summary">
+          <p><strong>Hero:</strong> <span id="sum-hero"></span></p>
+          <p><strong>Name:</strong> <span id="sum-name"></span></p>
+          <p><strong>Topics:</strong> <span id="sum-topics"></span></p>
+        </div>
+      </div>
+
+      <footer class="onboarding__footer">
+        <div class="storage-notice" id="storage-notice" hidden>Progress won't be saved in this browser (storage blocked).</div>
+        <div class="onboarding__actions">
+          <button type="button" id="btn-back">Back</button>
+          <button type="button" id="btn-next">Next</button>
+          <button type="button" id="btn-finish" hidden>Finish</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

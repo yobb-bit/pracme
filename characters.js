@@ -191,3 +191,18 @@ export function getNextVillain(id) {
   const i = CHARACTERS.villains.findIndex((v) => v.id === id);
   return i >= 0 ? CHARACTERS.villains[i + 1] || null : null;
 }
+/* --------------------------------------------------------------------------
+   4. HEROES (for onboarding + future pages)
+   -------------------------------------------------------------------------- */
+export const HEROES = [
+  {
+    id: 'batman',
+    defaultName: 'Batman',
+    model: 'assets/4877d6d0-5176-495f-bbe7-cf4e9a46dd06/base_basic_shaded.glb',
+    modelPath: 'assets/4877d6d0-5176-495f-bbe7-cf4e9a46dd06/base_basic_shaded.glb',
+    thumbnail: '',
+    trait: 'Steady under pressure.',
+    skill: 'Focus: reduces distraction.',
+    unlock: { type: 'default' },
+  },
+];
