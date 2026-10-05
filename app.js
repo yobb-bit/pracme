@@ -35,6 +35,7 @@
 
 import { Health } from "./health.js";
 import { Battle } from "./battle.js";
+import { loadProfile } from "./profile.js";
 import "./battle-ui.js";   // imported for its side effect: it wires itself up
 
 
@@ -85,6 +86,10 @@ const MIN_ANSWER_CHARS = 20;
 const requestedQuestionIds = new Set(
   (new URLSearchParams(window.location.search).get("questions") || "")
     .split(",").filter(Boolean)
+);
+const savedTopics = loadProfile()?.topics;
+let topicScope = new Set(
+  Array.isArray(savedTopics) ? savedTopics.filter((topic) => typeof topic === "string") : []
 );
 
 
@@ -262,8 +267,12 @@ let pool = [];           // questions matching all the filters
 let queue = [];          // the current round, ready to be popped one by one
 let current = null;      // the question currently on screen
 
-/* The three filters. "All" means no filter on that field. */
-const filters = { category: "All", difficulty: "All", type: "All" };
+/* "All" means all of the topics selected during onboarding. */
+const filters = {
+  category: topicScope.size === 1 ? [...topicScope][0] : "All",
+  difficulty: "All",
+  type: "All",
+};
 
 /* Boss Battle: the last verdict a checker.js sent us, or null while there is
    no checker. See readCheckerVerdict() further down. */
@@ -362,6 +371,13 @@ async function loadQuestions() {
       keyPoints: toArray(q.keyPoints),
     }));
 
+    // Keep only saved topic choices that still exist in the question data.
+    const availableTopics = new Set(allQuestions.map((question) => question.category));
+    topicScope = new Set([...topicScope].filter((topic) => availableTopics.has(topic)));
+    // Review's "Practice these" list is an explicit question selection.
+    if (requestedQuestionIds.size) topicScope.clear();
+    filters.category = topicScope.size === 1 ? [...topicScope][0] : "All";
+
     warnAboutDuplicateIds();
 
     /* Now that the questions exist, battle.js can look up "everything you ever
@@ -400,7 +416,10 @@ function getMissedIdsFor(difficulty) {
 
 /* Every loaded question at one difficulty. */
 function getQuestionsFor(difficulty) {
-  return allQuestions.filter((question) => question.difficulty === difficulty);
+  return allQuestions.filter((question) =>
+    question.difficulty === difficulty &&
+    (!topicScope.size || topicScope.has(question.category))
+  );
 }
 
 /* Review data is stored per id, so two questions sharing an id would share
@@ -446,7 +465,11 @@ function buildFilters() {
     row.textContent = "";   // clear anything already there
 
     // "All" plus every value actually used in the JSON
-    const values = ["All", ...new Set(allQuestions.map((q) => q[field]))];
+    let availableValues = [...new Set(allQuestions.map((q) => q[field]))];
+    if (field === "category" && topicScope.size) {
+      availableValues = availableValues.filter((topic) => topicScope.has(topic));
+    }
+    const values = ["All", ...availableValues];
 
     // Either the fixed order from the config, or plain alphabetical
     const labels = config.order
@@ -457,7 +480,9 @@ function buildFilters() {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "filters__btn";
-      button.textContent = config.capitalize ? capitalize(value) : value;
+      button.textContent = field === "category" && value === "All" && topicScope.size
+        ? "My topics"
+        : config.capitalize ? capitalize(value) : value;
       button.dataset.filter = value;          // the value we store
       if (config.order) button.dataset.level = value.toLowerCase();
 
@@ -513,6 +538,7 @@ function applyFilters() {
   pool = allQuestions.filter((question) => {
     if (owed.length && !owed.includes(question.id)) return false;
     if (requestedQuestionIds.size && !requestedQuestionIds.has(question.id)) return false;
+    if (topicScope.size && !topicScope.has(question.category)) return false;
 
     return Object.entries(active).every(([field, value]) =>
       value === "All" || question[field] === value);
