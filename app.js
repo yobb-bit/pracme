@@ -14,7 +14,7 @@
    6.  checkAnswer()     reveals the coaching blocks, then you rate yourself
        giveUp()          reveals everything and records a Missed for you
    7.  recordResult()    saves stats per question id into localStorage
-   8.  renderReview()    study list of the questions you keep missing
+   8.  renderSummary()   session totals from the saved attempt history
 
    The variables in the STATE block are the only mutable data in the app —
    every function reads or updates that state.
@@ -29,9 +29,8 @@
      battle.js     the fight: modes, villains, hits, knockouts, unlocking
      battle-ui.js  draws the panel, bars and floating numbers from their events
 
-   Because those three are modules, app.js is a module too (see the script tag
-   in index.html). That is the only change needed to the old code above — no
-   global variables were relied on.
+   app.js is imported by feature-page.js after the shared question-screen
+   markup is loaded. The feature pages therefore keep the same rules and UI.
    ========================================================================== */
 
 import { Health } from "./health.js";
@@ -45,13 +44,6 @@ import "./battle-ui.js";   // imported for its side effect: it wires itself up
 
 /* Where the questions live. Change this if you rename the file. */
 const QUESTIONS_URL = "questions.json";
-
-/* The three self-ratings. `score` is unused for now but handy for sorting. */
-const RATINGS = {
-  nailed: { label: "Nailed it", score: 1 },
-  partly: { label: "Partly",    score: 2 },
-  missed: { label: "Missed it", score: 3 },
-};
 
 /* Order for the difficulty buttons, easiest first. Anything else found in the
    JSON is added after these. */
@@ -89,11 +81,17 @@ const MAX_COPIES = 3;
    roughly one sentence, which is about the shortest useful spoken answer. */
 const MIN_ANSWER_CHARS = 20;
 
+/* Review can send a small question-id list to Free Practice. */
+const requestedQuestionIds = new Set(
+  (new URLSearchParams(window.location.search).get("questions") || "")
+    .split(",").filter(Boolean)
+);
+
 
 /* ==========================================================================
    2. DOM REFERENCES
    --------------------------------------------------------------------------
-   document.getElementById() looks an element up by the id in index.html.
+   document.getElementById() looks an element up by the id in feature-ui.html.
    We do it once at the top instead of on every click, because repeated
    lookups are slower and this keeps the rest of the code shorter.
    ========================================================================== */
@@ -101,13 +99,7 @@ const els = {
   timer:        document.getElementById("timer"),
   loadError:    document.getElementById("load-error"),
 
-  tabPractice:  document.getElementById("tab-practice"),
-  tabReview:    document.getElementById("tab-review"),
-  reviewCount:  document.getElementById("review-count"),
   screenPractice: document.getElementById("screen-practice"),
-  screenReview: document.getElementById("screen-review"),
-  reviewHint:   document.getElementById("review-hint"),
-  reviewList:   document.getElementById("review-list"),
 
   categories:   document.getElementById("categories"),
   difficulties: document.getElementById("difficulties"),
@@ -166,7 +158,7 @@ const filterRows = {
 /* ==========================================================================
    3. QUESTION TYPE — WHICH BLOCKS TO REVEAL
    --------------------------------------------------------------------------
-   Each reveal block in index.html has an entry in BLOCKS below. This table
+   Each reveal block in feature-ui.html has an entry in BLOCKS below. This table
    says which blocks to show, and in which order, for each question type and
    each path through the app:
 
@@ -426,7 +418,7 @@ function warnAboutDuplicateIds() {
 function showLoadError(err) {
   console.error(err);
 
-  // The most common cause: opening index.html by double-clicking it. Browsers
+  // The most common cause: opening a page by double-clicking it. Browsers
   // block fetch() from file:// pages, so questions.json cannot be read.
   els.loadError.innerHTML =
     "Could not load <code>questions.json</code> (" + err.message + "). " +
@@ -520,6 +512,7 @@ function applyFilters() {
 
   pool = allQuestions.filter((question) => {
     if (owed.length && !owed.includes(question.id)) return false;
+    if (requestedQuestionIds.size && !requestedQuestionIds.has(question.id)) return false;
 
     return Object.entries(active).every(([field, value]) =>
       value === "All" || question[field] === value);
@@ -882,7 +875,6 @@ function recordResult(rating) {
 
   saveState();
   renderSummary();
-  renderReview();
 }
 
 
@@ -903,149 +895,11 @@ function renderSummary() {
 
 
 /* ==========================================================================
-   13. REVIEW SCREEN
-   --------------------------------------------------------------------------
-   Study list, no quiz. Anything you missed, or only partly answered, is listed
-   worst first with its analogy and model answer.
-   ========================================================================== */
-function reviewableQuestions() {
-  return allQuestions
-    .map((question) => ({ question, stats: statsFor(question.id) }))
-
-    // Nothing to review unless it went badly at least once
-    .filter((item) => item.stats.timesMissed > 0 || item.stats.lastResult === "partly")
-
-    // Most missed first, then most attempts, then alphabetical for stability
-    .sort((a, b) =>
-      b.stats.timesMissed - a.stats.timesMissed ||
-      b.stats.timesSeen - a.stats.timesSeen ||
-      a.question.question.localeCompare(b.question.question));
-}
-
-function renderReview() {
-  const items = reviewableQuestions();
-
-  // Badge on the Review tab
-  els.reviewCount.textContent = items.length;
-  els.reviewCount.classList.toggle("is-empty", items.length === 0);
-
-  els.reviewHint.textContent = items.length === 0
-    ? "Nothing here yet. Questions you miss or only partly answer show up in this list."
-    : "No timer, no questions — just read these until they stick.";
-
-  els.reviewList.textContent = "";
-
-  if (items.length === 0) return;
-
-  for (const { question, stats } of items) {
-    els.reviewList.append(buildReviewItem(question, stats));
-  }
-}
-
-function buildReviewItem(question, stats) {
-  const item = document.createElement("li");
-  item.className = "review__item";
-
-  // --- tags: category, difficulty and type ---
-  const tags = document.createElement("p");
-  tags.className = "tags";
-  tags.append(
-    makeBadge(question.category),
-    makeBadge(question.difficulty, "difficulty"),
-    makeBadge(question.type, "type"));
-
-  // --- the question ---
-  const heading = document.createElement("p");
-  heading.className = "review__q";
-  heading.textContent = question.question;
-
-  // --- seen / missed / last result ---
-  const meta = document.createElement("div");
-  meta.className = "review__stats";
-  meta.append(
-    makeStat(`Seen ${stats.timesSeen}×`),
-    makeStat(`Missed ${stats.timesMissed}×`),
-    makeLastResult(stats),
-  );
-
-  item.append(tags, heading, meta,
-    makeReviewSection("Analogy", question.analogy, "analogy"),
-    makeReviewSection("Model answer", question.modelAnswer, "model"));
-
-  return item;
-}
-
-/* One of the small pill labels. `variant` is "difficulty" or "type" so the
-   colour rules in style.css can pick it up. */
-function makeBadge(text, variant = "") {
-  const badge = document.createElement("span");
-  badge.className = "badge" + (variant ? ` badge--${variant}` : "");
-  badge.textContent = variant === "type" ? capitalize(text) : text;
-  if (variant === "difficulty") badge.dataset.level = text.toLowerCase();
-  if (variant === "type") badge.dataset.type = text.toLowerCase();
-  return badge;
-}
-
-function makeStat(text) {
-  const span = document.createElement("span");
-  span.textContent = text;
-  return span;
-}
-
-function makeLastResult(stats) {
-  const span = document.createElement("span");
-  span.className = `review__last review__last--${stats.lastResult}`;
-  span.textContent = `Last: ${RATINGS[stats.lastResult].label}`;
-  return span;
-}
-
-function makeReviewSection(heading, text, variant) {
-  const section = document.createElement("section");
-  section.className = `review__section review__section--${variant}`;
-
-  const title = document.createElement("h4");
-  title.textContent = heading;
-
-  const body = document.createElement("p");
-  body.textContent = text;
-
-  section.append(title, body);
-  return section;
-}
-
-
-/* ==========================================================================
-   14. SWITCHING SCREENS
-   ========================================================================== */
-function showScreen(name) {
-  const onReview = name === "review";
-
-  els.screenPractice.hidden = onReview;
-  els.screenReview.hidden = !onReview;
-  els.tabPractice.classList.toggle("is-active", !onReview);
-  els.tabReview.classList.toggle("is-active", onReview);
-  els.timer.hidden = onReview;   // no clock while you are just reading
-
-  // Freeze the clock while studying, and pick it up when you come back
-  if (onReview) {
-    stopTimer();
-  } else if (phase === "answering" && !recorded) {
-    startTimer();
-  }
-
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-
-/* ==========================================================================
-   15. WIRING UP THE BUTTONS
+   13. WIRING UP THE BUTTONS
    ========================================================================== */
 els.checkBtn.addEventListener("click", checkAnswer);
 els.giveupBtn.addEventListener("click", giveUp);
 els.nextBtn.addEventListener("click", nextQuestion);
-
-els.tabPractice.addEventListener("click", () => showScreen("practice"));
-els.tabReview.addEventListener("click", () => showScreen("review"));
 
 for (const chip of els.rating.querySelectorAll(".chip")) {
   chip.addEventListener("click", () => rate(chip.dataset.rating));
@@ -1108,16 +962,16 @@ els.clearBtn.addEventListener("click", () => {
   data = { stats: {}, history: [] };
   saveState();
   renderSummary();
-  renderReview();
 
   // Boss Battle progress and Batman's health go too
   Battle.resetProgress();
+  // Keep the fixed page mode after clearing the saved fight.
+  if (window.APP_MODE === "practice") Battle.setMode("practice");
 });
 
 
 /* ==========================================================================
-   16. START
+   14. START
    ========================================================================== */
 renderSummary();   // paint whatever was already saved
-renderReview();    // same for the review list and its badge
 loadQuestions();  // then fetch the questions and show the first one

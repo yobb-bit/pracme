@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="guard.js"></script>
+  <script type="module" src="review-page.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+  <main class="app review-page">
+    <header class="review-page__header">
+      <div>
+        <p class="landing-eyebrow">Learn from each answer</p>
+        <h1>Review questions</h1>
+      </div>
+      <button class="btn btn--primary" id="practice-these" type="button" disabled>Practice these</button>
+    </header>
+
+    <div class="review-controls">
+      <label for="topic-filter">Filter by topic</label>
+      <select id="topic-filter">
+        <option value="All">All topics</option>
+      </select>
+      <p id="review-status" class="screen__hint" aria-live="polite"></p>
+    </div>
+
+    <p id="review-empty" class="review-empty" hidden>Nothing to review yet. Miss or partly answer a question in Practice, and it will show up here.</p>
+    <ul id="review-list" class="review" aria-label="Questions to review"></ul>
+  </main>
+</body>
+</html>

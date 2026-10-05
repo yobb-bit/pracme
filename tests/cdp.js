@@ -15,7 +15,7 @@ for (const dir of [path.join(HERE, '.chrome-profile'), path.join(HERE, '.chrome-
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const PORT = 9344;
-const URL = process.env.APP_URL || 'http://127.0.0.1:8765/index.html';
+const URL = process.env.APP_URL || 'http://127.0.0.1:8765/quiz.html';
 const args = process.argv.slice(2);
 const REDUCED = args.includes('--reduced-motion');
 const MOBILE = args.includes('--mobile');
@@ -81,8 +81,8 @@ async function main() {
   }
   await send('Page.navigate', { url: URL });
   await sleep(3000);
-  // Belt and braces: wipe any saved fight, then start again from the top screen.
-  await send('Runtime.evaluate', { expression: 'localStorage.clear()' });
+  // Start from clean fight data with the feature-page guard satisfied.
+  await send('Runtime.evaluate', { expression: `localStorage.clear(); localStorage.setItem('drill:profile', JSON.stringify({version:1,onboardingComplete:true,hero:{id:'batman',name:'Batman'},topics:[],unlockedHeroes:['batman'],heroesUsed:[],guideSeen:true}))` });
   await send('Page.reload', { ignoreCache: true });
   await sleep(4500);
 

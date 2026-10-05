@@ -12,7 +12,7 @@
      5. render in a loop, but stop while the tab is hidden
 
    Loaded as an ES module, so `import` works in a plain <script type="module">.
-   The "three" name itself is mapped to a CDN in the import map in index.html.
+   The "three" name itself is mapped to a CDN in quiz.html's import map.
    ========================================================================== */
 
 import * as THREE from 'three';
