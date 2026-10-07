@@ -18,6 +18,9 @@ async function startPage(){
 
     // Set the mode before app.js wires its controls and starts the question round.
     Battle.setMode(mode);
+    if (mode === 'boss' && new URLSearchParams(location.search).get('guideFight') === '1') {
+      Battle.selectVillain('easy');
+    }
 
     // The 3D library and arena are only loaded on the Quiz page.
     if(mode==='boss') await import('./arena.js');

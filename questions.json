@@ -45,6 +45,228 @@
     ]
   },
   {
+    "id": "sit-net-outage",
+    "category": "Networking",
+    "difficulty": "hard",
+    "type": "situational",
+    "question": "Your production site is returning 502 for every request and you are the only engineer awake. Walk me through the first ten minutes.",
+    "analogy": "A burst pipe in an empty building. You shut the main valve before you hunt for the wrench, and you tell the landlord while the floor is still wet.",
+    "modelAnswer": "First I confirm it is real and how wide: check monitoring, hit the site myself, look at the error rate and at what changed recently. Then I stop the bleeding: if the last release is the obvious suspect I roll it back, because a rollback is a known quantity and a fix at 2am is a guess. While that runs I post a short update in the incident channel: what is broken, what users see, what I am doing, and when I will update again. Once it recovers I check logs and metrics to confirm it is genuinely fixed rather than momentarily lucky, then write a short post-mortem with a timeline and one concrete prevention, such as an alert on 502 rate or a health check that fails the deploy.",
+    "clarifyingQuestions": [
+      "Is it every request for every user, or only some routes and regions?",
+      "Did a deploy, config change or traffic spike happen just before this?",
+      "Are the database and third-party dependencies healthy, or only the web tier?",
+      "Who else can be paged, and where does the team coordinate during an incident?"
+    ],
+    "goodApproach": [
+      "Confirm the impact yourself: which URLs, which users, and for how long.",
+      "Check the last deploy and recent changes first, because they are the cheapest explanation.",
+      "Roll back if a recent change is the likely cause; roll forward only when you know the fix.",
+      "Post an incident update before you have the answer, with a time for the next one.",
+      "Verify recovery with metrics, then write the post-mortem and add the missing alert."
+    ],
+    "commonMistakes": [
+      "Stacking a speculative fix on top of a broken release instead of rolling back first.",
+      "Going silent in the incident channel until the problem is solved.",
+      "Debugging without evidence: restarting services until something appears to work.",
+      "Closing the incident as soon as the site responds, before checking error rates and data."
+    ],
+    "followUp": "What would you do differently if the change could not be rolled back and the fix was hours away?",
+    "example": "A bad config push at 2am: a rollback takes ninety seconds and a status message takes a minute, and both beat an hour of guessing.",
+    "keyPoints": [
+      "Confirm scope and check the most recent change first",
+      "Mitigate with a rollback before attempting a clever fix",
+      "Communicate early, with a time for the next update",
+      "Recover, verify with monitoring, then prevent a repeat"
+    ]
+  },
+  {
+    "id": "sit-net-cert-expiry",
+    "category": "Networking",
+    "difficulty": "neutral",
+    "type": "situational",
+    "question": "The morning of a launch, users start seeing 'Your connection is not private' on the site. What do you do?",
+    "analogy": "The venue's fire certificate lapsed overnight. You can either get it re-stamped first thing or cancel the event; what you cannot do is hope nobody inspects.",
+    "modelAnswer": "That warning means the certificate cannot be validated, so first I work out which of the three usual causes it is: the certificate has expired, the chain is missing an intermediate, or a CDN or load balancer is serving the wrong certificate. If it is expired I reissue it immediately, because that is minutes of work and it restores trust for everyone. Certificates are automated for a reason, so I would then find out why the renewal failed, because the same failure will happen again in three months. While I fix it I tell the team and support whether the site is genuinely unsafe or only warning, so users get an honest answer instead of a guess.",
+    "clarifyingQuestions": [
+      "Is the certificate expired, or is the chain incomplete because an intermediate certificate is missing?",
+      "Which hop is serving the bad certificate: the CDN, the load balancer or the app server?",
+      "Is renewal automated, and did the renewal job fail or never run?",
+      "Who owns renewal, and is there an alert before the expiry date?"
+    ],
+    "goodApproach": [
+      "Check the dates and the chain with openssl or the browser's certificate viewer.",
+      "Find which hop in the path is presenting the wrong certificate.",
+      "Renew or reissue first, then diagnose why the automated renewal failed.",
+      "Tell users and support what is happening while the fix is in progress.",
+      "Add expiry alerts and a named owner so it cannot silently happen again."
+    ],
+    "commonMistakes": [
+      "Telling users to click through the browser warning.",
+      "Renewing the certificate without finding out why automatic renewal failed.",
+      "Assuming it is the app server when the CDN or load balancer serves the certificate.",
+      "Leaving renewal as nobody's job, so it breaks again on the next expiry."
+    ],
+    "followUp": "How would you set up certificate renewal so this cannot recur?",
+    "example": "A certbot timer disabled during a server migration: the site warns for exactly as long as nobody notices the renewal job stopped.",
+    "keyPoints": [
+      "Distinguish expired, wrong-chain and wrong-endpoint before acting",
+      "Renew first, then find out why the automated renewal failed",
+      "Never instruct users to bypass the browser warning",
+      "Alerts and named ownership prevent the next silent expiry"
+    ]
+  },
+  {
+    "id": "sit-net-slow-api",
+    "category": "Networking",
+    "difficulty": "neutral",
+    "type": "situational",
+    "question": "After a deploy, your API's p95 latency jumps from 200ms to 3s, but the error rate has not changed. What do you do?",
+    "analogy": "A till queue that is still serving everyone, just far more slowly. Nobody is being turned away, but half the shop has already left.",
+    "modelAnswer": "No errors means the application is working, it is just waiting on something, so I start by finding out where it waits: traces or timings for database queries, external calls and lock saturation, compared against the previous deploy. Then I read the diff, because most latency jumps come from a missing index, a new query per request, or a call that used to be cached and no longer is. I check saturation too: CPU, memory, connection pools and thread pools. If the user impact is real I roll back while I investigate, because a rollback restores the old latency immediately. I fix forward only when I can show the latency is back where it was under realistic load.",
+    "clarifyingQuestions": [
+      "Is the latency on every endpoint or only on specific ones?",
+      "Did the deploy change queries, dependencies or caching?",
+      "Is the time going to the database, external calls or our own code?",
+      "Are CPU, memory or connection pool usage high, and is it worse under load?"
+    ],
+    "goodApproach": [
+      "Find where the time goes with traces and timings before changing anything.",
+      "Compare against the previous deploy and read the diff for query and cache changes.",
+      "Check saturation: CPU, memory, connection pools and thread pools.",
+      "Roll back if user impact is significant, while capturing evidence for the cause.",
+      "Fix forward with a measurement that proves p95 is back, plus a latency alert."
+    ],
+    "commonMistakes": [
+      "Tuning code before finding out whether the time is spent in the database.",
+      "Ignoring p95 because averages look fine and errors are zero.",
+      "Rolling back without capturing evidence, so the cause is lost.",
+      "Shipping the fix without re-measuring p95 under realistic load."
+    ],
+    "followUp": "What does p95 tell you that the average does not?",
+    "example": "One extra query per request is invisible at ten users and turns p95 into seconds at ten thousand, with the error rate untouched.",
+    "keyPoints": [
+      "No errors with high latency means waiting, not failing",
+      "Locate the slow step with traces before changing code",
+      "Compare against the last deploy; most regressions are in the diff",
+      "Roll back for impact, then fix forward with a measurement"
+    ]
+  },
+  {
+    "id": "log-net-dns-vs-link",
+    "category": "Networking",
+    "difficulty": "easy",
+    "type": "logical",
+    "question": "Both commands run on the same machine seconds apart. What is broken, and what do you check next?",
+    "code": "$ ping -c 2 8.8.8.8\n64 bytes from 8.8.8.8: icmp_seq=0 ttl=117 time=11.2 ms\n64 bytes from 8.8.8.8: icmp_seq=1 ttl=117 time=10.9 ms\n\n$ ping -c 2 example.com\nping: cannot resolve example.com: Unknown host",
+    "answer": "Connectivity is fine: routing, the gateway and outbound traffic all work. DNS resolution is what fails, so the resolver configuration and the lookup itself are the next things to check.",
+    "analogy": "The phone line works and you can dial a number you already know, but directory assistance is not answering, so you cannot look up any new names.",
+    "modelAnswer": "Reaching 8.8.8.8 by address proves that the local interface, the default gateway, routing and the return path all work, and that a remote host answers us. Failing to resolve a name says the failure sits between the name and the address: the resolver in /etc/resolv.conf is wrong or unreachable, the search domain is wrong, or the upstream resolver is refusing or failing this query. I would read /etc/resolv.conf, then run dig example.com @8.8.8.8 to ask a known-good resolver directly, which separates our resolver from the name itself. Then I check whether it is one domain, all domains or only internal ones, since a VPN or split-DNS change is a common cause.",
+    "clarifyingQuestions": [
+      "Do other names resolve, or is it only this one?",
+      "Which resolver does this machine use, and does it answer dig?",
+      "Did this start after a VPN, DHCP or resolver change?",
+      "Does the same lookup work from another machine on the same network?"
+    ],
+    "goodApproach": [
+      "Separate the two questions: can we reach hosts, and can we resolve names?",
+      "Note that the raw IP already works, so the path is not the problem.",
+      "Read /etc/resolv.conf and check whether that resolver answers dig.",
+      "Query a known-good resolver directly with dig @8.8.8.8 to isolate the resolver from the domain.",
+      "Work out whether the failure covers one domain, all domains or only internal ones."
+    ],
+    "commonMistakes": [
+      "Restarting the network interface when the path to the IP address clearly works.",
+      "Assuming DNS is broken globally when only one domain fails to resolve.",
+      "Forgetting that a VPN changes both the resolver and the search domain.",
+      "Editing resolver settings without recording what they were beforehand."
+    ],
+    "followUp": "How would you tell a DNS problem from a firewall problem in one command?",
+    "example": "dig example.com @8.8.8.8 succeeding while the local dig fails points straight at the local resolver configuration.",
+    "keyPoints": [
+      "Pinging an IP only proves routing and connectivity work",
+      "Name resolution is a separate step: resolver, search domain, upstream",
+      "Compare the local resolver with a known-good one using dig @",
+      "Establish whether it is one domain, all domains or only internal names"
+    ]
+  },
+  {
+    "id": "log-net-subnet",
+    "category": "Networking",
+    "difficulty": "hard",
+    "type": "logical",
+    "question": "A host is configured as follows. Which addresses in the block can be assigned to interfaces, what is the broadcast address, and why does the gateway setting fail?",
+    "code": "ip addr show eth0\n    inet 192.168.10.137/29 brd 192.168.10.143 scope global eth0\n\nip route\n    default via 192.168.10.136 dev eth0",
+    "answer": "Usable: 192.168.10.137 to 192.168.10.142 (six hosts). Broadcast: 192.168.10.143. 192.168.10.136 is the network address, so no interface can hold it, and a default route through it can never be reached.",
+    "analogy": "A row of eight parking bays where the first and last are the painted entry and exit lines rather than bays. You can only park in the six in between, and the entrance line is not somewhere to leave a car.",
+    "modelAnswer": "A /29 leaves three host bits, so the block holds 2^3 = 8 addresses: 192.168.10.136 through 192.168.10.143. Rounding .137 down to a multiple of 8 gives the network address .136, and the last address of the block, .143, is reserved for broadcast, so only .137 to .142 can be assigned, which is 8 minus 2 = 6 usable hosts. The default gateway is set to .136, which is the network address and therefore exists on no interface, so packets leave the host with nowhere to go. The gateway has to be a usable address inside the same block, such as .142, and the router must actually be configured with that address.",
+    "clarifyingQuestions": [
+      "How many host bits does a /29 leave, and how many addresses is that?",
+      "Which two addresses in a block are never assignable?",
+      "Is the gateway a usable address inside the same subnet?",
+      "Is the router really configured with the address we are pointing at?"
+    ],
+    "goodApproach": [
+      "Convert the prefix into host bits: /29 means 3 bits, so 8 addresses.",
+      "Find the block start by rounding .137 down to a multiple of 8, giving .136.",
+      "Reserve .136 as the network address and .143 as the broadcast address.",
+      "List the usable range .137 to .142, which is six hosts.",
+      "Check the gateway: it must be usable in that range and must exist on the router."
+    ],
+    "commonMistakes": [
+      "Counting all eight addresses as assignable.",
+      "Forgetting the broadcast address is reserved, so only six hosts fit.",
+      "Setting the gateway to the network address because it looks like the first address of the range.",
+      "Rounding .137 up instead of down when finding the network address."
+    ],
+    "followUp": "What would the same calculation give for a /30, and where would you use it?",
+    "example": "A /30 has four addresses: one network, one broadcast and two usable, which is the classic size for a point-to-point link between two routers.",
+    "keyPoints": [
+      "/29 leaves 3 host bits: 8 addresses, 6 usable",
+      "The block starts at .136 and the broadcast is .143",
+      "The network address cannot be assigned, so it cannot be the gateway",
+      "The gateway must be a usable address that exists on the router"
+    ]
+  },
+  {
+    "id": "log-net-tcp-reorder",
+    "category": "Networking",
+    "difficulty": "neutral",
+    "type": "logical",
+    "question": "The connection has already delivered every byte before sequence 400. These four 400-byte segments then arrive in the order shown. What does the application read, and what does the receiver send back while it waits?",
+    "code": "next byte expected by the receiver: 400\nsegments arrive in this order:\n  seq 1200, seq 400, seq 1600, seq 800",
+    "answer": "The application reads 400, 800, 1200, 1600 in sequence: TCP buffers the out-of-order segments and delivers them in order. While the gap is open the receiver keeps acknowledging the last in-order byte it expects, so the sender repeatedly sees ACK 400.",
+    "analogy": "A numbered book arriving out of order. The reader keeps the late pages aside and starts reading only once page one turns up, telling the publisher each time, 'I am still waiting for page one'.",
+    "modelAnswer": "TCP identifies every segment with a sequence number and only hands data to the application when every byte before it has arrived. Here the next byte expected is 400, so the segments for 1200 and 1600 arrive first and are buffered immediately, but they cannot be delivered because the stream still has a hole at 400 and 800. Until the gap is filled the receiver acknowledges the last in-order byte it holds, which produces duplicate ACKs pointing at 400. Those repeated ACKs let the sender detect the gap and retransmit 400 early instead of waiting for a timeout, and the moment 400 and 800 land the receiver delivers 400, 800, 1200 and 1600 in one go. The application never sees the reordering, which is exactly the guarantee TCP is providing.",
+    "clarifyingQuestions": [
+      "Does TCP deliver data to the application in sequence number order?",
+      "Which sequence number does the receiver expect next, and what does it acknowledge?",
+      "What are duplicate ACKs for, and does the sender treat them as a loss signal?",
+      "Does the application ever become aware that segments arrived out of order?"
+    ],
+    "goodApproach": [
+      "Find the next expected sequence number: 400, because everything before it is delivered.",
+      "Buffer anything above the gap: 1200 and 1600 arrive first and have to wait.",
+      "Keep acknowledging the last in-order byte, so the sender keeps hearing 400.",
+      "Recognise the repeated ACKs as the fast retransmit signal rather than a rejection.",
+      "Deliver the stream in order once 400 and 800 land."
+    ],
+    "commonMistakes": [
+      "Saying the application reads the segments in arrival order.",
+      "Claiming TCP drops out-of-order segments instead of buffering them.",
+      "Confusing a duplicate ACK with a rejection of the data.",
+      "Forgetting that reordering is invisible above TCP, which is the whole point of it."
+    ],
+    "followUp": "How does this differ over UDP, and why does WebRTC accept it?",
+    "example": "A video call can drop a late frame and carry on; a file transfer over TCP must wait, because one missing byte means a corrupt file.",
+    "keyPoints": [
+      "TCP buffers out-of-order segments and delivers them in sequence",
+      "The receiver acknowledges the byte it expects next, so gaps produce duplicate ACKs",
+      "Duplicate ACKs trigger fast retransmit before any timeout",
+      "The application never sees the reordering"
+    ]
+  },
+  {
     "id": "js-equality",
     "category": "JavaScript",
     "difficulty": "easy",

@@ -45,6 +45,8 @@ export const VILLAINS = [
       name: 'Easy Villain',            // ← rename me
       difficulty: 'easy',             // ← matches the "easy" questions
       hitsToDefeat: 5,                // ← change the numbers if you want
+      purpose: 'Warm-up boss: the basics every interviewer asks.',
+      portrait: '👹',
       modelPath: 'assets/80429bfd-85da-43b9-8334-218acb7455b5/base.glb',
       yawOffset: 0,
       next: 'normal',                  // unlocks when this one is beaten
@@ -55,6 +57,8 @@ export const VILLAINS = [
       name: 'Normal Villain',          // ← rename me
       difficulty: 'neutral',           // ← matches the "neutral" questions
       hitsToDefeat: 7,                // ← change the numbers if you want
+      purpose: 'Builds on the fundamentals with questions that need clearer examples.',
+      portrait: '👺',
       modelPath: 'assets/aae5629a-40dd-48d5-aa79-578661a517f0/base_basic_shaded.glb',
       yawOffset: 0,
       next: 'hard',
@@ -65,6 +69,8 @@ export const VILLAINS = [
       name: 'Hard Villain',            // ← rename me
       difficulty: 'hard',              // ← matches the "hard" questions
       hitsToDefeat: 10,               // ← change the numbers if you want
+      purpose: 'Tests deeper judgment and detailed answers under pressure.',
+      portrait: '😈',
       modelPath: 'assets/4dd77de6-b5b5-49d9-8649-4c46d6e6a7aa/base_basic_shaded.glb',
       yawOffset: 0,
       next: null,                      // last one, so nothing comes after

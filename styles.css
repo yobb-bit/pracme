@@ -1177,6 +1177,29 @@ ul { margin: 0; }
 .feature-card h3 { margin-bottom: .4rem; font-size: 1.05rem; }
 .feature-card p { margin: 0; color: var(--text-dim); font-size: .9rem; }
 .feature-card__link { display: flex; gap: .35rem; align-items: center; margin-top: auto; padding-top: 1rem; color: var(--accent); font-size: .9rem; font-weight: 700; }
+
+/* Guided tour: the shaded layer is clipped around the current target. */
+.guide-overlay { position: fixed; inset: 0; z-index: 1000; pointer-events: none; --spot-x: 0px; --spot-y: 0px; --spot-w: 0px; --spot-h: 0px; }
+.guide-overlay__shade { position: absolute; inset: 0; background: rgba(8, 12, 20, .72); pointer-events: auto; transition: clip-path .22s ease; }
+.guide-overlay:has(.guide-bubble) .guide-overlay__shade { cursor: default; }
+.guide-overlay::before { content: ""; position: absolute; z-index: 1; left: var(--spot-x); top: var(--spot-y); width: var(--spot-w); height: var(--spot-h); border: 2px solid #91b5ff; border-radius: 14px; box-shadow: 0 0 0 4px rgba(91, 141, 255, .2), 0 0 22px rgba(145, 181, 255, .55); pointer-events: none; transition: all .22s ease; }
+.guide-bubble { position: absolute; z-index: 2; top: 50%; left: 50%; width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; transform: translate(-50%, -50%); padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: 0 16px 50px rgba(0, 0, 0, .35); pointer-events: auto; }
+.guide-bubble:focus { outline: 3px solid var(--accent); outline-offset: 3px; }
+.guide-bubble__speaker { display: flex; align-items: center; gap: .6rem; margin-bottom: .65rem; font-weight: 700; }
+.guide-bubble__portrait { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 50%; background: var(--surface-2); font-size: 1.35rem; }
+.guide-bubble__portrait-image { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.guide-bubble__count { margin: 0 0 .3rem; color: var(--text-dim); font-size: .8rem; }
+.guide-bubble h2 { margin-bottom: .45rem; font-size: 1.2rem; }
+.guide-bubble #guide-text { margin-bottom: 1rem; }
+.guide-villain-preview { display: grid; width: 112px; height: 112px; margin: .25rem 0 .75rem; place-items: center; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-2); font-size: 3.5rem; }
+.guide-villain__stats { margin: 0 0 .5rem; color: var(--text-dim); font-size: .9rem; font-weight: 650; }
+.guide-bubble__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.guide-bubble__actions button { min-height: 42px; padding: .45rem .8rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
+.guide-bubble__actions button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.guide-bubble__actions [data-guide="next"] { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
+@media (max-width: 600px) { .guide-bubble { top: auto; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; width: calc(100vw - 24px); max-height: min(48vh, 360px); transform: none; } }
+@media (prefers-reduced-motion: reduce) { .guide-overlay__shade, .guide-overlay::before { transition: none; } }
+
 .app-loading { max-width: 720px; margin: 2rem auto; padding: 1rem; color: var(--text-dim); }
 body[data-mode="practice"] .arena { display: none; }
 body[data-mode="quiz"] .boss__modes { display: none; }
