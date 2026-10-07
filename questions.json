@@ -823,5 +823,213 @@
       "Each step removes a candidate that provably cannot be part of a pair",
       "Result is O(n) time with O(1) extra space"
     ]
+  },
+  {
+    "id": "sit-net-vpn-dns",
+    "category": "Networking",
+    "difficulty": "easy",
+    "type": "situational",
+    "question": "You connect to the company VPN and can reach public websites, but an internal tool will not load. How would you investigate?",
+    "analogy": "The building's front door is open, but the staff directory and internal hallways are not. Check whether you have the right map and access before rebuilding the building.",
+    "modelAnswer": "I would first confirm the exact failure and whether it affects one internal tool or all company services. Then I would check that the VPN says it is connected, verify the internal hostname resolves to the expected private address, and compare the route and DNS settings with a working VPN session. If DNS resolves but the connection fails, I would check the route, port and any access policy; if the name does not resolve, I would focus on VPN-provided DNS or split-DNS configuration. I would capture the hostname, resolved address, time and error, then share those details with the network team rather than changing settings blindly.",
+    "clarifyingQuestions": [
+      "Does the problem affect one internal tool or every internal service?",
+      "Does the internal hostname resolve to a private IP address?",
+      "Can a teammate on the same VPN reach the service?"
+    ],
+    "goodApproach": [
+      "Confirm the scope and exact error before changing anything.",
+      "Check VPN status, DNS resolution and the route to the internal address.",
+      "Separate a name-resolution problem from a connection or access problem.",
+      "Record useful evidence and involve the network owner when policy or routes are involved."
+    ],
+    "commonMistakes": [
+      "Assuming that a connected VPN guarantees internal DNS and routes are correct.",
+      "Changing firewall or VPN settings before determining where the request fails.",
+      "Testing only the public internet and concluding the whole connection works."
+    ],
+    "followUp": "How would split DNS let internal and public hostnames resolve differently?",
+    "example": "A VPN client can route normal web traffic correctly while missing the DNS server and private route needed for an internal dashboard.",
+    "keyPoints": [
+      "Establish whether one service or all internal services are affected",
+      "Check VPN status, internal DNS and routes as separate layers",
+      "Use the resolved address and exact error to narrow the failure",
+      "Gather evidence before requesting a network-policy change"
+    ]
+  },
+  {
+    "id": "sit-net-packet-loss",
+    "category": "Networking",
+    "difficulty": "neutral",
+    "type": "situational",
+    "question": "Users in one region report choppy calls and intermittent timeouts, while users elsewhere are fine. What would you do first?",
+    "analogy": "One highway into town has potholes while the other roads are clear. Compare the route and the traffic before replacing every car in the fleet.",
+    "modelAnswer": "I would confirm the affected region, services and time window, then compare user-facing latency and packet-loss metrics across regions. I would check whether the issue is on the client network, the regional edge, our service or a dependency by comparing probes from multiple locations and reviewing traces and network telemetry. If calls are actively affected, I would use an available healthy region or route as a mitigation if that is safe, while keeping users and the incident channel updated. After recovery I would identify the failing link or component, preserve the measurements, and add a regional alert or failover test if the gap was in our monitoring.",
+    "clarifyingQuestions": [
+      "Are the affected users on one ISP, office network or geographic region?",
+      "Do service metrics show packet loss, latency or errors at the same time?",
+      "Can traffic be safely routed through another healthy region?"
+    ],
+    "goodApproach": [
+      "Scope the impact by location, provider, service and time.",
+      "Compare independent probes and telemetry to isolate the failing segment.",
+      "Mitigate user impact with a verified alternate route or region when possible.",
+      "Communicate status and verify recovery with the same regional measurements."
+    ],
+    "commonMistakes": [
+      "Treating a regional problem as a global application outage.",
+      "Assuming ping alone proves the application path is healthy.",
+      "Failing over without checking capacity or confirming that the alternate region works."
+    ],
+    "followUp": "Why might packet loss harm a real-time call more than a normal web page?",
+    "example": "A regional peering issue can add loss for one ISP while requests from other regions remain healthy.",
+    "keyPoints": [
+      "Define the affected region and user population",
+      "Compare latency and loss measurements from multiple vantage points",
+      "Isolate client, edge, service and dependency paths",
+      "Mitigate safely, communicate, and verify the improvement"
+    ]
+  },
+  {
+    "id": "sit-net-deploy-unreachable",
+    "category": "Networking",
+    "difficulty": "hard",
+    "type": "situational",
+    "question": "After a network change, a newly deployed service passes its local health check but clients in another subnet cannot connect. How do you narrow this down?",
+    "analogy": "The office door opens from inside, but people in the next building cannot get through the gate. Check each part of the route and the access rules between them.",
+    "modelAnswer": "I would first establish whether the failure is limited to the new service, the new subnet or all cross-subnet traffic, and compare it with a known-good deployment. A local health check proves the process responds locally, but not that it listens on a reachable interface or that remote traffic can traverse the network. I would verify the service bind address and port, resolve the service name from a client in the affected subnet, inspect the route and return route, and check firewall or security-group rules in both directions. I would use a connection test and packet capture or flow logs to see whether SYN packets arrive and whether replies leave. If the change is causing an outage, I would roll it back or restore the last known-good rule while preserving evidence, then make one scoped change and verify from both subnets.",
+    "clarifyingQuestions": [
+      "Can clients in the service's own subnet connect, and can other services cross the subnet boundary?",
+      "Is the process listening on the service interface and expected port?",
+      "Do flow logs or a packet capture show the request arriving and a response returning?",
+      "What network, firewall or deployment change immediately preceded the failure?"
+    ],
+    "goodApproach": [
+      "Compare the failing path with a known-good client, service and route.",
+      "Check name resolution, bind address, port, forward route and return route.",
+      "Use flow logs or packet capture to locate where packets stop.",
+      "Restore service with a safe rollback, then test a narrow change end to end."
+    ],
+    "commonMistakes": [
+      "Assuming a local health check proves remote reachability.",
+      "Changing several firewall rules at once, making the result hard to explain.",
+      "Checking only the forward path and overlooking asymmetric or missing return routing.",
+      "Leaving a broad temporary network rule in place after the incident."
+    ],
+    "followUp": "What evidence would distinguish a blocked inbound SYN from a missing return route?",
+    "example": "A service bound to 127.0.0.1 passes its local probe but cannot accept connections from another subnet, even with a permissive firewall.",
+    "keyPoints": [
+      "A local health check does not prove remote network reachability",
+      "Check DNS, listening interface and port, routing in both directions, and policy",
+      "Use packet or flow evidence to locate the drop",
+      "Mitigate safely and verify a narrowly scoped fix end to end"
+    ]
+  },
+  {
+    "id": "log-net-listener-bind",
+    "category": "Networking",
+    "difficulty": "easy",
+    "type": "logical",
+    "question": "The service works from the server itself, but a client on another machine gets connection refused. What does the listener output tell you?",
+    "code": "$ ss -lnt\nState  Local Address:Port  Peer Address:Port\nLISTEN 127.0.0.1:8080     0.0.0.0:*",
+    "answer": "The process listens only on the loopback interface, so connections from other machines cannot reach it. Bind it to the intended server interface or 0.0.0.0, then check the firewall and retest remotely.",
+    "analogy": "The help desk phone is connected only to an extension inside the room; callers outside cannot dial it until it is connected to the building's phone line.",
+    "modelAnswer": "127.0.0.1 is the loopback address, reachable only from the same machine. The listener is not bound to the server's network interface, which explains why a local request works while a remote one is refused. I would configure the service to listen on the intended interface, or on 0.0.0.0 if it should accept traffic on all IPv4 interfaces, then confirm the port is allowed by the host and network firewall. Finally I would test from a remote client and avoid exposing the service on interfaces that do not need access.",
+    "clarifyingQuestions": [
+      "What address does the service need to accept connections on?",
+      "Does the process listen on the server's private interface after the change?",
+      "Is port 8080 allowed only from the intended client network?"
+    ],
+    "goodApproach": [
+      "Read the local address in the listener output.",
+      "Recognize that 127.0.0.1 accepts local connections only.",
+      "Bind to the intended interface and apply least-privilege firewall access.",
+      "Verify with a connection attempt from another machine."
+    ],
+    "commonMistakes": [
+      "Opening the firewall without fixing the loopback-only bind address.",
+      "Binding publicly without considering which clients should have access.",
+      "Confusing 127.0.0.1 with the server's private IP address."
+    ],
+    "followUp": "What is the security difference between binding to 0.0.0.0 and a private interface address?",
+    "example": "A development server bound to localhost is reachable in a browser on the host but not from a phone on the same Wi-Fi.",
+    "keyPoints": [
+      "127.0.0.1 is reachable only from the local machine",
+      "Bind the service to the intended reachable interface",
+      "Allow only appropriate clients through the firewall",
+      "Confirm the fix from a separate machine"
+    ]
+  },
+  {
+    "id": "log-net-traceroute-filter",
+    "category": "Networking",
+    "difficulty": "neutral",
+    "type": "logical",
+    "question": "A traceroute shows three responding hops and then only asterisks, but an HTTPS request to the destination succeeds. What can you conclude?",
+    "code": "$ traceroute api.example.com\n 1  10.0.0.1       1.2 ms\n 2  198.51.100.1  12.4 ms\n 3  203.0.113.9   18.1 ms\n 4  * * *\n 5  * * *\n\n$ curl -I https://api.example.com\nHTTP/2 200",
+    "answer": "The application path is working for HTTPS. Later routers or the destination may filter or deprioritize traceroute probes, so the asterisks do not prove those hops or the service are down. If path diagnosis is still needed, use a trace method that matches the application's protocol and inspect latency or loss at the destination.",
+    "analogy": "The delivery reaches the office and gets a signed receipt, even though later checkpoints do not answer when you ask them for directions.",
+    "modelAnswer": "The successful HTTPS response proves that a TCP connection and application request reached the destination and returned successfully at that moment. Traceroute relies on intermediate devices sending time-exceeded responses, and networks often filter or rate-limit those probes. Therefore the stars show that the probes received no response, not that the path is broken. I would use a TCP-based trace to port 443 if I need a closer comparison, and measure repeated application latency and loss rather than treating missing traceroute replies as an outage.",
+    "clarifyingQuestions": [
+      "Was traceroute run with UDP, ICMP or TCP probes?",
+      "Does the HTTPS request succeed consistently or only once?",
+      "Are users seeing latency or loss even though the request completes?"
+    ],
+    "goodApproach": [
+      "Give more weight to the successful application request for HTTPS availability.",
+      "Remember that routers can filter or rate-limit traceroute replies.",
+      "Match the diagnostic probe to the application's protocol and port.",
+      "Repeat measurements and distinguish missing probe replies from packet loss to the destination."
+    ],
+    "commonMistakes": [
+      "Declaring the destination unreachable because intermediate hops show asterisks.",
+      "Assuming a successful curl proves there is no intermittent latency or loss.",
+      "Comparing a UDP traceroute with an application that uses TCP without noting the difference."
+    ],
+    "followUp": "Why can an intermediate hop show loss while the destination has none?",
+    "example": "A router may forward normal HTTPS traffic at line rate while ignoring diagnostic packets addressed to its own control plane.",
+    "keyPoints": [
+      "HTTPS 200 demonstrates that the application request completed",
+      "Traceroute stars can mean filtered or rate-limited probe responses",
+      "Use probes that match the application's protocol when possible",
+      "Measure end-to-end behavior to identify actual user impact"
+    ]
+  },
+  {
+    "id": "log-net-syn-no-ack",
+    "category": "Networking",
+    "difficulty": "hard",
+    "type": "logical",
+    "question": "A client repeatedly sends TCP SYN packets to a server, but receives no SYN-ACK or RST. The server application logs show no request. Where would you investigate next?",
+    "code": "client -> server: SYN, SYN, SYN (retransmissions)\nserver -> client: no observed reply\nserver application log: no connection",
+    "answer": "The TCP handshake is not completing, and the application has not accepted a connection. Check whether SYN packets reach the server interface, then inspect routing, network ACLs and firewalls on the forward path; if they arrive, check the listener and the return path. The lack of an RST means there is no evidence yet that the host actively rejected the port.",
+    "analogy": "A visitor keeps ringing the building's outer doorbell, but no one answers and the front desk has no record of them. Find out whether the bell rings, then check the door and the route back out.",
+    "modelAnswer": "A SYN retransmission without SYN-ACK or RST means the handshake did not complete. Since the application has no connection log, I would not start by debugging the request handler: the connection may never reach it. I would capture packets at the client and server interface or use flow logs to determine whether the SYN reaches the host. If it does not, I would inspect DNS, routing, security groups, network ACLs and firewalls along the path. If it does, I would check whether the service listens on that address and port and whether the SYN-ACK can return through the route and policy. A packet capture on both ends narrows down the point of loss.",
+    "clarifyingQuestions": [
+      "Does a capture on the server interface see the incoming SYN?",
+      "Is the service listening on the destination address and port?",
+      "Do flow logs show an allow or deny decision, and is there a valid return route?",
+      "Does the same client reach another port or a known-good server in that subnet?"
+    ],
+    "goodApproach": [
+      "Recognize that the failure occurs before an application request is logged.",
+      "Capture at both ends to find whether the SYN arrives and whether a reply leaves.",
+      "Check listener state, routes in both directions and network policy.",
+      "Change one layer at a time and retest the TCP handshake."
+    ],
+    "commonMistakes": [
+      "Debugging application code before confirming the TCP connection exists.",
+      "Calling the port closed when no RST was observed.",
+      "Checking only the inbound firewall and overlooking return routing or egress policy.",
+      "Relying on ping even though ICMP and TCP may follow different rules."
+    ],
+    "followUp": "What would a returned RST tell you that a silent timeout does not?",
+    "example": "A cloud security group can silently drop inbound SYN packets, leaving the client to retransmit while the application sees nothing.",
+    "keyPoints": [
+      "No completed handshake means the application has not handled a request",
+      "Determine whether SYN reaches the server before choosing a layer to debug",
+      "Check listener, forward routing, policy and return routing",
+      "A timeout is different evidence from an explicit TCP reset"
+    ]
   }
 ]
